@@ -194,6 +194,7 @@
     return YES;
 }
 
+/*
 - (UIViewController *)splitViewController:(UISplitViewController *)splitViewController separateSecondaryViewControllerFromPrimaryViewController:(UIViewController *)primaryViewController
 {
     if ([primaryViewController isKindOfClass:[UINavigationController class]]) {
@@ -282,6 +283,7 @@
         }
     }
 }
+*/
 
 #pragma --------------------------------------------------------------------------------------------
 #pragma mark ===== Slide Over - Split View =====
