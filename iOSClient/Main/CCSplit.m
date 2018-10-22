@@ -56,6 +56,7 @@
     [super viewDidLoad];
 
     // Display mode SPLIT
+    self.delegate = self;
     self.preferredDisplayMode = UISplitViewControllerDisplayModeAutomatic;
     self.splitViewController.delegate = self;
     //self.maximumPrimaryColumnWidth = 400;
