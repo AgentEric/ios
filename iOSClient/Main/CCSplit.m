@@ -56,17 +56,17 @@
     [super viewDidLoad];
 
     // Display mode SPLIT
-    self.preferredDisplayMode = UISplitViewControllerDisplayModeAllVisible;
+    self.preferredDisplayMode = UISplitViewControllerDisplayModeAutomatic;
+    self.splitViewController.delegate = self;
     //self.maximumPrimaryColumnWidth = 400;
     
     // Settings TabBar
-    UITabBarController *tabBarController = [self.viewControllers firstObject];
+    UINavigationController *navigationContyroller = [self.viewControllers firstObject];
+    [appDelegate aspectNavigationControllerBar:navigationContyroller.navigationBar online:YES hidden:NO];
+
+    UITabBarController *tabBarController = (UITabBarController *) [navigationContyroller topViewController];
     [appDelegate createTabBarController:tabBarController];
-    
-    // Settings Navigation Controller
-    UINavigationController *navigationController = [self.viewControllers lastObject];
-    [appDelegate aspectNavigationControllerBar:navigationController.navigationBar online:YES hidden:NO];
-    
+        
     [self inizialize];    
 }
 
@@ -305,5 +305,6 @@
         }
     }
 }
+     
 
 @end
