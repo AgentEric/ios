@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 25/07/18.
 //  Copyright © 2018 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -54,13 +54,11 @@
     self = [super init];
     if (self) {
        
-        self.ncPNPublicKey = [CCUtility getPushNotificationPublicKey];
-        self.ncPNPrivateKey = [CCUtility getPushNotificationPrivateKey];
     }
     return self;
 }
 
-- (BOOL)generatePushNotificationsKeyPair
+- (BOOL)generatePushNotificationsKeyPair:(NSString *)account
 {
     EVP_PKEY *pkey;
     NSError *keyError;
@@ -81,9 +79,9 @@
     keyBytes  = malloc(len);
     
     BIO_read(publicKeyBIO, keyBytes, len);
-    _ncPNPublicKey = [NSData dataWithBytes:keyBytes length:len];
-    [CCUtility setPushNotificationPublicKey:_ncPNPublicKey];
-    NSLog(@"Push Notifications Key Pair generated: \n%@", [[NSString alloc] initWithData:_ncPNPublicKey encoding:NSUTF8StringEncoding]);
+    NSData *ncPNPublicKey = [NSData dataWithBytes:keyBytes length:len];
+    [CCUtility setPushNotificationPublicKey:account data:ncPNPublicKey];
+    NSLog(@"Push Notifications Key Pair generated: \n%@", [[NSString alloc] initWithData:ncPNPublicKey encoding:NSUTF8StringEncoding]);
     
     // PrivateKey
     BIO *privateKeyBIO = BIO_new(BIO_s_mem());
@@ -93,8 +91,8 @@
     keyBytes = malloc(len);
     
     BIO_read(privateKeyBIO, keyBytes, len);
-    _ncPNPrivateKey = [NSData dataWithBytes:keyBytes length:len];
-    [CCUtility setPushNotificationPrivateKey:_ncPNPrivateKey];
+    NSData *ncPNPrivateKey = [NSData dataWithBytes:keyBytes length:len];
+    [CCUtility setPushNotificationPrivateKey:account data:ncPNPrivateKey];
     
     EVP_PKEY_free(pkey);
     
@@ -136,6 +134,5 @@
     
     return decryptString;
 }
-
 
 @end

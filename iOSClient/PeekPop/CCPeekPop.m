@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 26/08/16.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -30,68 +30,60 @@
 @interface CCPeekPop ()
 {
     AppDelegate *appDelegate;
+    NSInteger highLabelFileName;
 }
 @end
 
 @implementation CCPeekPop
-
-- (void)setMetadata:(tableMetadata *)newMetadata
-{
-    if (_metadata != newMetadata)
-        _metadata = newMetadata;
-}
 
 - (void)viewDidLoad
 {
     [super viewDidLoad];
     
     appDelegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
-    
-    self.preferredContentSize = CGSizeMake(self.view.frame.size.width - 50, self.view.frame.size.width - 50);
-    
-    NSURL *url = [[NSBundle mainBundle] URLForResource:@"loading" withExtension:@"gif"];
-    
-    _imagePreview.image = [UIImage animatedImageWithAnimatedGIFURL:url];
-    
-    _imagePreview.contentMode = UIViewContentModeCenter;
+    UIImage *image = self.imageFile;
 
-    [self downloadThumbnail];
-}
-
-// E' apparso
-
--(void) viewDidAppear:(BOOL)animated{
+    self.fileName.text = self.metadata.fileNameView;
+    highLabelFileName = self.fileName.bounds.size.height + 5;
     
-    [super viewDidAppear:animated];    
-}
-
-- (void)didReceiveMemoryWarning
-{
-    [super didReceiveMemoryWarning];
+    if (self.metadata.hasPreview) {
+        
+        if ([CCUtility fileProviderStorageIconExists:self.metadata.fileID fileNameView:self.metadata.fileNameView]) {
+            
+            UIImage *fullImage = [UIImage imageWithContentsOfFile:[CCUtility getDirectoryProviderStorageFileID:self.metadata.fileID fileNameView:self.metadata.fileNameView]];
+            if (fullImage != nil) {
+                image = fullImage;
+            }
+            
+        } else {
+            
+            [self downloadThumbnail];
+        }
+    }
+    
+    self.imagePreview.image = [CCGraphics scaleImage:image toSize:CGSizeMake(self.view.bounds.size.width, self.view.bounds.size.height) isAspectRation:true];
+    self.preferredContentSize = CGSizeMake(self.imagePreview.image.size.width,  self.imagePreview.image.size.height + highLabelFileName);
 }
 
 - (NSArray<id<UIPreviewActionItem>> *)previewActionItems
 {
-    //__weak typeof(self) weakSelf = self;
+    NSMutableArray *items = [NSMutableArray new];
+ 
+    if (self.showOpenIn && !self.metadata.directory) {
+        UIPreviewAction *openIn = [UIPreviewAction actionWithTitle:NSLocalizedString(@"_open_in_", nil) style:UIPreviewActionStyleDefault handler:^(UIPreviewAction *action,  UIViewController *previewViewController){
+            [[NCMainCommon sharedInstance] downloadOpenInMetadata:self.metadata];
+        }];
+        [items addObject:openIn];
+    }
     
-    UIPreviewAction *previewAction1 = [UIPreviewAction actionWithTitle:NSLocalizedString(@"_open_in_", nil) style:UIPreviewActionStyleDefault handler:^(UIPreviewAction *action,  UIViewController *previewViewController){
-        
-        NSString *serverUrl = [[NCManageDatabase sharedInstance] getServerUrl:_metadata.directoryID];
-        
-        if (serverUrl) {
-            
-            _metadata.session = k_download_session;
-            _metadata.sessionError = @"";
-            _metadata.sessionSelector = selectorOpenIn;
-            _metadata.status = k_metadataStatusWaitDownload;
-            
-            // Add Metadata for Download
-            (void)[[NCManageDatabase sharedInstance] addMetadata:_metadata];
-            [appDelegate performSelectorOnMainThread:@selector(loadAutoDownloadUpload) withObject:nil waitUntilDone:YES];
-        }
-    }];
+    if (self.showShare) {
+        UIPreviewAction *share = [UIPreviewAction actionWithTitle:NSLocalizedString(@"_share_", nil) style:UIPreviewActionStyleDefault handler:^(UIPreviewAction *action,  UIViewController *previewViewController){
+            [appDelegate.activeMain readShareWithAccount:appDelegate.activeAccount openWindow:YES metadata:self.metadata];
+        }];
+        [items addObject:share];
+    }
     
-    return @[previewAction1];
+    return items;
 }
 
 #pragma --------------------------------------------------------------------------------------------
@@ -103,23 +95,11 @@
     CGFloat width = [[NCUtility sharedInstance] getScreenWidthForPreview];
     CGFloat height = [[NCUtility sharedInstance] getScreenHeightForPreview];
     
-    OCnetworking *ocNetworking = [[OCnetworking alloc] initWithDelegate:nil metadataNet:nil withUser:appDelegate.activeUser withUserID:appDelegate.activeUserID withPassword:appDelegate.activePassword withUrl:appDelegate.activeUrl];
-    
-    [ocNetworking downloadPreviewWithMetadata:_metadata serverUrl:appDelegate.activeMain.serverUrl withWidth:width andHeight:height completion:^(NSString *message, NSInteger errorCode) {
-        
-        if (errorCode == 0) {
-            
-            UIImage *image = [UIImage imageWithContentsOfFile:[NSString stringWithFormat:@"%@/%@.ico", [CCUtility getDirectoryProviderStorageFileID:_metadata.fileID], _metadata.fileNameView]];
-            
-            _imagePreview.image = image;
-            _imagePreview.contentMode = UIViewContentModeScaleToFill;
-            
-            self.preferredContentSize = CGSizeMake(image.size.width, image.size.height);
-            
-        } else {
-            
-            [appDelegate messageNotification:@"_error_" description:message visible:YES delay:k_dismissAfterSecond type:TWMessageBarMessageTypeError errorCode:errorCode];
-            [self dismissViewControllerAnimated:YES completion:nil];
+    [[OCNetworking sharedManager] downloadPreviewWithAccount:appDelegate.activeAccount metadata:self.metadata withWidth:width andHeight:height completion:^(NSString *account, UIImage *image, NSString *message, NSInteger errorCode) {
+     
+        if (errorCode == 0 && [account isEqualToString:appDelegate.activeAccount]) {
+            self.imagePreview.image = [CCGraphics scaleImage:image toSize:CGSizeMake(self.view.bounds.size.width, self.view.bounds.size.height) isAspectRation:true];
+            self.preferredContentSize = CGSizeMake(self.imagePreview.image.size.width, self.imagePreview.image.size.height + highLabelFileName);
         }
     }];
 }

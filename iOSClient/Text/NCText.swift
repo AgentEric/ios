@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 24/07/17.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -172,9 +172,9 @@ class NCText: UIViewController, UITextViewDelegate {
                         metadata.status = Int(k_metadataStatusWaitUpload)
 
                         _ = NCManageDatabase.sharedInstance.addMetadata(metadata)
-                        self.appDelegate.perform(#selector(self.appDelegate.loadAutoDownloadUpload), on: Thread.main, with: nil, waitUntilDone: true)
-                        
                         NCMainCommon.sharedInstance.reloadDatasource(ServerUrl: serverUrl, fileID: metadata.fileID, action: Int32(k_action_MOD))
+                        
+                        self.appDelegate.startLoadAutoDownloadUpload()
 
                         self.delegate?.dismissTextView()
                     })
@@ -191,7 +191,7 @@ class NCText: UIViewController, UITextViewDelegate {
             
         } else {
             
-            let formViewController = CreateFormUploadFileText.init(serverUrl: serverUrl!, text: self.textView.text, fileName: NSLocalizedString("_untitled_txt_", comment: ""))
+            let formViewController = NCCreateFormUploadFileText.init(serverUrl: serverUrl!, text: self.textView.text, fileName: NSLocalizedString("_untitled_txt_", comment: ""))
             self.navigationController?.pushViewController(formViewController, animated: true)
         }
     }

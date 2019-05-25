@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 06/09/18.
 //  Copyright © 2018 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -23,20 +23,24 @@
 
 import Foundation
 
-class NCViewerRichdocument: NSObject, WKNavigationDelegate, WKScriptMessageHandler, CCMoveDelegate {
-    
-    @objc static let sharedInstance: NCViewerRichdocument = {
-        let instance = NCViewerRichdocument()
-        return instance
-    }()
+class NCViewerRichdocument: NSObject, WKNavigationDelegate, WKScriptMessageHandler, NCSelectDelegate {
     
     var detail: CCDetail!
     var webView: WKWebView!
     let appDelegate = UIApplication.shared.delegate as! AppDelegate
 
+    @objc static let sharedInstance: NCViewerRichdocument = {
+        let instance = NCViewerRichdocument()
+        return instance
+    }()
+    
     @objc func viewRichDocumentAt(_ link: String, detail: CCDetail) {
         
         self.detail = detail
+        
+        if (UIDevice.current.userInterfaceIdiom == .phone) {
+            detail.navigationController?.setNavigationBarHidden(true, animated: false)
+        }
         
         let contentController = WKUserContentController()
         contentController.add(self, name: "RichDocumentsMobileInterface")
@@ -71,49 +75,65 @@ class NCViewerRichdocument: NSObject, WKNavigationDelegate, WKScriptMessageHandl
 
                 self.webView.removeFromSuperview()
                 
-                self.detail.navigationController?.popToRootViewController(animated: true)
+                self.detail.navigationController?.popViewController(animated: true)
+//                detail.navigationController?.setNavigationBarHidden(false, animated: false)
                 self.detail.navigationController?.navigationBar.topItem?.title = ""
             }
             
             if message.body as! String == "insertGraphic" {
                 
-                let storyboard = UIStoryboard(name: "CCMove", bundle: nil)
-                let movieNavigationController = storyboard.instantiateViewController(withIdentifier: "CCMove") as! UINavigationController
-                let moveViewController = movieNavigationController.topViewController as! CCMove
+                let storyboard = UIStoryboard(name: "NCSelect", bundle: nil)
+                let navigationController = storyboard.instantiateInitialViewController() as! UINavigationController
+                let viewController = navigationController.topViewController as! NCSelect
                 
-                moveViewController.delegate = self
-                moveViewController.hideMoveutton = true
-                moveViewController.hideCreateFolder = true
-                moveViewController.tintColor = NCBrandColor.sharedInstance.brandText
-                moveViewController.barTintColor = NCBrandColor.sharedInstance.brand
-                moveViewController.tintColorTitle = NCBrandColor.sharedInstance.brandText
-                moveViewController.networkingOperationQueue = appDelegate.netQueue
-                moveViewController.includeImages = true
-                moveViewController.includeDirectoryE2EEncryption = false
-                moveViewController.selectFile = true
+                viewController.delegate = self
+                viewController.hideButtonCreateFolder = true
+                viewController.selectFile = true
+                viewController.includeDirectoryE2EEncryption = false
+                viewController.includeImages = true
+                viewController.type = ""
+                viewController.layoutViewSelect = k_layout_view_richdocument
                 
-                movieNavigationController.modalPresentationStyle = UIModalPresentationStyle.formSheet
-                self.detail.present(movieNavigationController, animated: true, completion: nil)
+                navigationController.modalPresentationStyle = UIModalPresentationStyle.formSheet
+                self.detail.present(navigationController, animated: true, completion: nil)
             }
             
             if message.body as! String == "share" {
-                appDelegate.activeMain.openWindowShare(self.detail.metadataDetail)
+                appDelegate.activeMain.readShare(withAccount: appDelegate.activeAccount, openWindow: true, metadata: self.detail.metadataDetail)
             }
         }
     }
     
     //MARK: -
     
+    func dismissSelect(serverUrl: String?, metadata: tableMetadata?, type: String) {
+        
+        if serverUrl != nil && metadata != nil {
+            
+            OCNetworking.sharedManager().createAssetRichdocuments(withAccount: metadata?.account, fileName: metadata?.fileName, serverUrl: serverUrl, completion: { (account, url, message, errorCode) in
+                if errorCode == 0 && account == self.appDelegate.activeAccount {
+                    let functionJS = "OCA.RichDocuments.documentsMain.postAsset('\(metadata!.fileNameView)', '\(url!)')"
+                    self.webView.evaluateJavaScript(functionJS, completionHandler: { (result, error) in })
+                } else if errorCode != 0 {
+                    self.appDelegate.messageNotification("_error_", description: message, visible: true, delay: TimeInterval(k_dismissAfterSecond), type: TWMessageBarMessageType.error, errorCode: Int(k_CCErrorInternalError))
+                } else {
+                    print("[LOG] It has been changed user during networking process, error.")
+                }
+            })
+        }
+    }
+    
     func select(_ metadata: tableMetadata!, serverUrl: String!) {
         
-        let ocNetworking = OCnetworking.init(delegate: self, metadataNet: nil, withUser: appDelegate.activeUser, withUserID: appDelegate.activeUserID, withPassword: appDelegate.activePassword, withUrl: appDelegate.activeUrl)
-        ocNetworking?.createAssetRichdocuments(withFileName: metadata.fileName, serverUrl: serverUrl, success: { (url) in
-
-            let functionJS = "OCA.RichDocuments.documentsMain.postAsset('\(metadata.fileNameView)', '\(url!)')"
-            self.webView.evaluateJavaScript(functionJS, completionHandler: { (result, error) in })
-            
-        }, failure: { (message, errorCode) in
-            self.appDelegate.messageNotification("_error_", description: message, visible: true, delay: TimeInterval(k_dismissAfterSecond), type: TWMessageBarMessageType.error, errorCode: Int(k_CCErrorInternalError))
+        OCNetworking.sharedManager().createAssetRichdocuments(withAccount: metadata?.account, fileName: metadata?.fileName, serverUrl: serverUrl, completion: { (account, url, message, errorCode) in
+            if errorCode == 0 && account == self.appDelegate.activeAccount {
+                let functionJS = "OCA.RichDocuments.documentsMain.postAsset('\(metadata.fileNameView)', '\(url!)')"
+                self.webView.evaluateJavaScript(functionJS, completionHandler: { (result, error) in })
+            } else if errorCode != 0 {
+                self.appDelegate.messageNotification("_error_", description: message, visible: true, delay: TimeInterval(k_dismissAfterSecond), type: TWMessageBarMessageType.error, errorCode: Int(k_CCErrorInternalError))
+            } else {
+                print("[LOG] It has been changed user during networking process, error.")
+            }
         })
     }
     
@@ -136,7 +156,36 @@ class NCViewerRichdocument: NSObject, WKNavigationDelegate, WKScriptMessageHandl
     }
     
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        print("didFinish");
+        NCUtility.sharedInstance.stopActivityIndicator()
     }
+     
+    //MARK: -
     
+    @objc func isRichDocument(_ metadata: tableMetadata) -> Bool {
+        
+        if appDelegate.reachability.isReachable() == false {
+            return false
+        }
+        
+        guard let mimeType = CCUtility.getMimeType(metadata.fileNameView) else {
+            return false
+        }
+        guard let richdocumentsMimetypes = NCManageDatabase.sharedInstance.getRichdocumentsMimetypes(account: metadata.account) else {
+            return false
+        }
+        
+        if richdocumentsMimetypes.count > 0 && mimeType.components(separatedBy: ".").count > 2 {
+            
+            let mimeTypeArray = mimeType.components(separatedBy: ".")
+            let mimeType = mimeTypeArray[mimeTypeArray.count - 2] + "." + mimeTypeArray[mimeTypeArray.count - 1]
+            
+            for richdocumentMimetype: String in richdocumentsMimetypes {
+                if richdocumentMimetype.contains(mimeType) {
+                    return true
+                }
+            }
+        }
+        
+        return false
+    }
 }

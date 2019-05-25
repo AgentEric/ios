@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 28/05/18.
 //  Copyright © 2018 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -38,49 +38,42 @@ extension FileProviderExtension {
         
         for itemIdentifier in itemIdentifiers {
             
-            let metadata = providerData.getTableMetadataFromItemIdentifier(itemIdentifier)
-            if metadata != nil {
+            guard let metadata = providerData.getTableMetadataFromItemIdentifier(itemIdentifier) else {
                 
-                if (metadata!.typeFile == k_metadataTypeFile_image || metadata!.typeFile == k_metadataTypeFile_video) {
-                    
-                    guard let serverUrl = NCManageDatabase.sharedInstance.getServerUrl(metadata!.directoryID) else {
-                        continue
+                counterProgress += 1
+                if (counterProgress == progress.totalUnitCount) {
+                    completionHandler(nil)
+                }
+                
+                continue
+            }
+            
+            if (metadata.hasPreview == 1) {
+                
+                let width = NCUtility.sharedInstance.getScreenWidthForPreview()
+                let height = NCUtility.sharedInstance.getScreenHeightForPreview()
+                
+                OCNetworking.sharedManager().downloadPreview(withAccount: providerData.account, metadata: metadata, withWidth: width, andHeight: height, completion: { (account, preview, message, errorCode) in
+                   
+                    if errorCode == 0 && account == self.providerData.account {
+                        do {
+                            let url = URL.init(fileURLWithPath: CCUtility.getDirectoryProviderStorageIconFileID(metadata.fileID, fileNameView: metadata.fileNameView))
+                            let data = try Data.init(contentsOf: url)
+                            perThumbnailCompletionHandler(itemIdentifier, data, nil)
+                        } catch let error {
+                            print("error: \(error)")
+                            perThumbnailCompletionHandler(itemIdentifier, nil, NSFileProviderError(.noSuchItem))
+                        }
+                    } else {
+                        perThumbnailCompletionHandler(itemIdentifier, nil, NSFileProviderError(.serverUnreachable))
                     }
-                    
-                    
-                    let width = NCUtility.sharedInstance.getScreenWidthForPreview()
-                    let height = NCUtility.sharedInstance.getScreenHeightForPreview()
-                    
-                    let ocNetworking = OCnetworking.init(delegate: nil, metadataNet: nil, withUser: providerData.accountUser, withUserID: providerData.accountUserID, withPassword: providerData.accountPassword, withUrl: providerData.accountUrl)
-                    
-                    ocNetworking?.downloadPreview(with: metadata!, serverUrl: serverUrl, withWidth: width, andHeight: height, completion: { (message, errorCode) in
-                        
-                        if errorCode == 0 {
-                            do {
-                                let url = URL.init(fileURLWithPath: CCUtility.getDirectoryProviderStorageIconFileID(metadata!.fileID, fileNameView: metadata!.fileNameView))
-                                let data = try Data.init(contentsOf: url)
-                                perThumbnailCompletionHandler(itemIdentifier, data, nil)
-                            } catch let error {
-                                print("error: \(error)")
-                                perThumbnailCompletionHandler(itemIdentifier, nil, NSFileProviderError(.noSuchItem))
-                            }
-                        } else {
-                            perThumbnailCompletionHandler(itemIdentifier, nil, NSFileProviderError(.serverUnreachable))
-                        }
-                        
-                        counterProgress += 1
-                        if (counterProgress == progress.totalUnitCount) {
-                            completionHandler(nil)
-                        }
-                    })
-                    
-                } else {
                     
                     counterProgress += 1
                     if (counterProgress == progress.totalUnitCount) {
                         completionHandler(nil)
                     }
-                }
+                })
+                
             } else {
                 
                 counterProgress += 1

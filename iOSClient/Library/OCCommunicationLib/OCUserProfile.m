@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 16/02/17.
 //  Copyright © 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -30,12 +30,20 @@
     self = [super init];
     
     self.id = @"";
+    
     self.address = @"";
+    self.businessSize = @"";
+    self.businessType = @"";
+    self.city = @"";
+    self.company = @"";
+    self.country = @"";
     self.displayName = @"";
     self.email = @"";
     self.phone = @"";
+    self.role = @"";
     self.twitter = @"";
     self.webpage = @"";
+    self.zip = @"";
     
     return self;
 }

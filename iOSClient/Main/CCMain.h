@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 04/09/14.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -25,36 +25,33 @@
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <MediaPlayer/MediaPlayer.h>
 #import <AudioToolbox/AudioToolbox.h>
+#import <DZNEmptyDataSet/UIScrollView+EmptyDataSet.h>
 
 #import "TWMessageBarManager.h"
-#import "MGSwipeTableCell.h"
 #import "AHKActionSheet.h"
-#import "CTAssetSelectionLabel.h"
 #import "BKPasscodeViewController.h"
 #import "NSString+TruncateToWidth.h"
-#import "UIScrollView+EmptyDataSet.h"
 #import "CCLogin.h"
 #import "CCCellMain.h"
 #import "CCCellMainTransfer.h"
-#import "CCMove.h"
 #import "CCDetail.h"
-#import "CTAssetsPickerController.h"
 #import "CCShareOC.h"
 #import "CCShareInfoCMOC.h"
-#import "CCMove.h"
 #import "CCGraphics.h"
 #import "CCSection.h"
 #import "CCUtility.h"
 #import "CCHud.h"
 #import "CCMenuAccount.h"
 #import "CCPeekPop.h"
+#import <MGSwipeTableCell/MGSwipeTableCell.h>
 
 @class tableMetadata;
 
-@interface CCMain : UIViewController <UITableViewDataSource, UITableViewDelegate, UIActionSheetDelegate, UIGestureRecognizerDelegate, UIDocumentInteractionControllerDelegate, UIViewControllerPreviewingDelegate, CCMoveDelegate, CTAssetsPickerControllerDelegate, BKPasscodeViewControllerDelegate, UISplitViewControllerDelegate, UIPopoverControllerDelegate, CCShareOCDelegate, CCPeekPopDelegate, UIDocumentMenuDelegate, UIDocumentPickerDelegate, UISearchResultsUpdating, UISearchControllerDelegate, UISearchBarDelegate, UIScrollViewDelegate, DZNEmptyDataSetSource, DZNEmptyDataSetDelegate>
+@interface CCMain : UIViewController <UITableViewDataSource, UITableViewDelegate, UIActionSheetDelegate, UIGestureRecognizerDelegate, UIViewControllerPreviewingDelegate, BKPasscodeViewControllerDelegate, UISplitViewControllerDelegate, UIPopoverControllerDelegate, CCShareOCDelegate, UIDocumentMenuDelegate, UIDocumentPickerDelegate, UISearchResultsUpdating, UISearchControllerDelegate, UISearchBarDelegate, UIScrollViewDelegate, DZNEmptyDataSetSource, DZNEmptyDataSetDelegate>
 
 @property (nonatomic, weak) IBOutlet UITableView *tableView;
 @property (nonatomic, strong) tableMetadata *metadata;
+@property (nonatomic, strong) tableMetadata *metadataForPushDetail;
 @property (nonatomic, strong) NSString *serverUrl;
 @property (nonatomic, strong) NSString *titleMain;
 @property (nonatomic, weak) CCShareOC *shareOC;
@@ -62,12 +59,12 @@
 @property (nonatomic, strong) UISearchController *searchController;
 @property (nonatomic, strong) UIView *reMenuBackgroundView;
 @property (nonatomic, strong) UITapGestureRecognizer *singleFingerTap;
-@property (nonatomic, strong) UIImage *imageTitle;
+@property (nonatomic, strong) NSString *scrollToFileNamePath;
+
 @property BOOL isSelectedMode;
 
-- (void)openIn:(tableMetadata *)metadata;
-
-- (void)shouldPerformSegue;
+- (void)shouldPerformSegue:(tableMetadata *)metadata;
+- (void)performSegueDirectoryWithControlPasscode:(BOOL)controlPasscode metadata:(tableMetadata *)metadata scrollToFileNamePath:(NSString *)scrollToFileNamePath;
 
 - (void)saveToPhotoAlbum:(tableMetadata *)metadata;
 
@@ -84,7 +81,8 @@
 
 - (void)reloadDatasource:(NSString *)serverUrl fileID:(NSString *)fileID action:(NSInteger)action;
 
-- (void)openWindowShare:(tableMetadata *)metadata;
+- (void)readShareWithAccount:(NSString *)account openWindow:(BOOL)openWindow metadata:(tableMetadata *)metadata;
+
 - (void)clearDateReadDataSource:(NSNotification *)notification;
 - (void)cancelSearchBar;
 

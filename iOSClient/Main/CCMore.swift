@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 03/04/17.
 //  Copyright © 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -51,7 +51,6 @@ class CCMore: UIViewController, UITableViewDelegate, UITableViewDataSource, CCLo
     }
     
     override func viewDidLoad() {
-        
         super.viewDidLoad()
         
         tableView.delegate = self
@@ -114,7 +113,15 @@ class CCMore: UIViewController, UITableViewDelegate, UITableViewDataSource, CCLo
         item.url = "segueShares"
         functionMenu.append(item)
 
+        // ITEM : Offline
+        item = OCExternalSites.init()
+        item.name = "_manage_file_offline_"
+        item.icon = "offline"
+        item.url = "segueOffline"
+        functionMenu.append(item)
+        
         // ITEM : Scan
+#if !targetEnvironment(simulator)
         if #available(iOS 11.0, *) {
             item = OCExternalSites.init()
             item.name = "_scanned_images_"
@@ -122,9 +129,10 @@ class CCMore: UIViewController, UITableViewDelegate, UITableViewDataSource, CCLo
             item.url = "openStoryboardScan"
             functionMenu.append(item)
         }
+#endif
         
         // ITEM : Trash
-        let capabilities = NCManageDatabase.sharedInstance.getCapabilites()
+        let capabilities = NCManageDatabase.sharedInstance.getCapabilites(account: appDelegate.activeAccount)
         if capabilities != nil && capabilities!.versionMajor >= Int(k_trash_version_available) {
             
             item = OCExternalSites.init()
@@ -137,7 +145,7 @@ class CCMore: UIViewController, UITableViewDelegate, UITableViewDataSource, CCLo
         // ITEM : External
         if NCBrandOptions.sharedInstance.disable_more_external_site == false {
         
-            listExternalSite = NCManageDatabase.sharedInstance.getAllExternalSites()
+            listExternalSite = NCManageDatabase.sharedInstance.getAllExternalSites(account: appDelegate.activeAccount)
             
             if listExternalSite != nil {
                 
@@ -221,7 +229,7 @@ class CCMore: UIViewController, UITableViewDelegate, UITableViewDataSource, CCLo
     
     @objc func changeUserProfile() {
      
-        let fileNamePath = CCUtility.getDirectoryUserData() + "/" + CCUtility.getStringUser(appDelegate.activeUser, activeUrl: appDelegate.activeUrl) + "-avatar.png"
+        let fileNamePath = CCUtility.getDirectoryUserData() + "/" + CCUtility.getStringUser(appDelegate.activeUser, activeUrl: appDelegate.activeUrl) + "-" + appDelegate.activeUser + ".png"
         var quota: String = ""
         
         if let themingAvatarFile = UIImage.init(contentsOfFile: fileNamePath) {
@@ -356,7 +364,7 @@ class CCMore: UIViewController, UITableViewDelegate, UITableViewDataSource, CCLo
             }
         }
         
-        cell.imageIcon?.image = CCGraphics.changeThemingColorImage(UIImage.init(named: item.icon), multiplier: 2, color: NCBrandColor.sharedInstance.icon)
+        cell.imageIcon?.image = CCGraphics.changeThemingColorImage(UIImage.init(named: item.icon), width: 50, height: 50, color: NCBrandColor.sharedInstance.icon)
         cell.labelText?.text = NSLocalizedString(item.name, comment: "")
         cell.labelText.textColor = NCBrandColor.sharedInstance.textView
         
@@ -420,7 +428,7 @@ class CCMore: UIViewController, UITableViewDelegate, UITableViewDataSource, CCLo
                 let manageAccount = CCManageAccount()
                 manageAccount.delete(self.appDelegate.activeAccount)
                 
-                self.appDelegate.openLoginView(self, loginType: Int(k_login_Add_Forced), selector: Int(k_intro_login))
+                self.appDelegate.openLoginView(self, delegate: self, loginType: Int(k_login_Add_Forced), selector: Int(k_intro_login)) 
             }
             
             let actionNo = UIAlertAction(title: NSLocalizedString("_no_delete_", comment: ""), style: .default) { (action:UIAlertAction) in
@@ -466,16 +474,14 @@ class CCMore: UIViewController, UITableViewDelegate, UITableViewDataSource, CCLo
         
         NotificationCenter.default.post(name: NSNotification.Name(rawValue: "initializeMain"), object: nil, userInfo: nil)
         
-        appDelegate.selectedTabBarController(Int(k_tabBarApplicationIndexFile))
-        
-        appDelegate.subscribingNextcloudServerPushNotification()
+        appDelegate.selectedTabBarController(Int(k_tabBarApplicationIndexFile))        
     }
 }
 
 extension CCMore: SwiftModalWebVCDelegate, SwiftWebVCDelegate{
     
     public func didStartLoading() {
-        print("Started loading.")
+        //print("Started loading.")
     }
     
     public func didReceiveServerRedirectForProvisionalNavigation(url: URL) {
@@ -494,19 +500,15 @@ extension CCMore: SwiftModalWebVCDelegate, SwiftWebVCDelegate{
     }
     
     public func didFinishLoading(success: Bool) {
-        print("Finished loading. Success: \(success).")
+        //print("Finished loading. Success: \(success).")
     }
     
     public func didFinishLoading(success: Bool, url: URL) {
-        print("Finished loading. Success: \(success).")
-    }
-    
-    public func decidePolicyForNavigationAction(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        decisionHandler(.allow)
+        //print("Finished loading. Success: \(success).")
     }
     
     public func webDismiss() {
-        print("Web dismiss.")
+        //print("Web dismiss.")
     }
 }
 

@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 05/11/15.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -28,9 +28,9 @@
 @interface CCIntro () <SwiftModalWebVCDelegate>
 {
     int titlePositionY;
-    int descPositionY;
     int titleIconPositionY;
     int buttonPosition;
+    int safeAreaBottom;
     
     int selector;
 }
@@ -64,18 +64,6 @@
 {
 }
 
-- (void)login:(id)sender
-{
-    selector = k_intro_login;
-    [self.intro hideWithFadeOutDuration:0.7];
-}
-
-- (void)signUp:(id)sender
-{
-    selector = k_intro_signup;
-    [self.intro hideWithFadeOutDuration:0.7];
-}
-
 - (void)show
 {
     [self showIntro];
@@ -87,28 +75,36 @@
     CGFloat height = self.rootView.bounds.size.height;
     CGFloat width = self.rootView.bounds.size.width;
     
-    if (height <= 568) {
+    if (height <= 568) { // iPhone 5
         titleIconPositionY = 20;
         titlePositionY = height / 2 + 40.0;
-        descPositionY  = height / 2;
-        buttonPosition = height / 2 + 50.0;
+        buttonPosition = height / 2 + 70.0;
     } else {
-        titleIconPositionY = 100;
+        titleIconPositionY = 40;
         titlePositionY = height / 2 + 40.0;
-        descPositionY  = height / 2;
         buttonPosition = height / 2 + 120.0;
+    }
+    
+    // SafeArea
+    if (@available(iOS 11, *)) {
+        UIInterfaceOrientation orientation = [UIApplication sharedApplication].statusBarOrientation;
+        if (orientation == UIInterfaceOrientationLandscapeLeft || orientation == UIInterfaceOrientationLandscapeRight) {
+            safeAreaBottom = [UIApplication sharedApplication].delegate.window.safeAreaInsets.right;
+        } else {
+            safeAreaBottom = [UIApplication sharedApplication].delegate.window.safeAreaInsets.bottom;
+        }
     }
     
     // Button
     
-    UIView *buttonView = [[UIView alloc] initWithFrame:CGRectMake(0,0,self.rootView.bounds.size.width,220)];
+    UIView *buttonView = [[UIView alloc] initWithFrame:CGRectMake(0,0,self.rootView.bounds.size.width, height - buttonPosition)];
     buttonView.userInteractionEnabled = YES ;
     
     UIButton *buttonLogin = [UIButton buttonWithType:UIButtonTypeRoundedRect];
     buttonLogin.frame = CGRectMake(50.0, 0.0, width - 100.0, 40.0);
-    buttonLogin.layer.cornerRadius = 3;
+    buttonLogin.layer.cornerRadius = 20;
     buttonLogin.clipsToBounds = YES;
-    [buttonLogin setTitle:[NSLocalizedString(@"_log_in_", nil) uppercaseString] forState:UIControlStateNormal];
+    [buttonLogin setTitle:NSLocalizedString(@"_log_in_", nil) forState:UIControlStateNormal];
     buttonLogin.titleLabel.font = [UIFont systemFontOfSize:14];
     [buttonLogin setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
     buttonLogin.backgroundColor = [[NCBrandColor sharedInstance] customerText];
@@ -118,9 +114,9 @@
     
     UIButton *buttonSignUp = [UIButton buttonWithType:UIButtonTypeRoundedRect];
     buttonSignUp.frame = CGRectMake(50.0, 60.0, width - 100.0, 40.0);
-    buttonSignUp.layer.cornerRadius = 3;
+    buttonSignUp.layer.cornerRadius = 20;
     buttonSignUp.clipsToBounds = YES;
-    [buttonSignUp setTitle:[NSLocalizedString(@"_sign_up_", nil) uppercaseString] forState:UIControlStateNormal];
+    [buttonSignUp setTitle:NSLocalizedString(@"_sign_up_", nil) forState:UIControlStateNormal];
     buttonSignUp.titleLabel.font = [UIFont systemFontOfSize:14];
     [buttonSignUp setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     buttonSignUp.backgroundColor = [UIColor colorWithRed:25.0/255.0 green:89.0/255.0 blue:141.0/255.0 alpha:1.000];
@@ -129,18 +125,25 @@
     [buttonView addSubview:buttonSignUp];
     
     UIButton *buttonHost = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    buttonHost.frame = CGRectMake(50.0, 200.0, width - 100.0, 20.0);
-    buttonHost.layer.cornerRadius = 3;
+    buttonHost.frame = CGRectMake(50.0, height - buttonPosition - 30.0 - safeAreaBottom, width - 100.0, 20.0);
+    buttonHost.layer.cornerRadius = 20;
     buttonHost.clipsToBounds = YES;
     [buttonHost setTitle:NSLocalizedString(@"_host_your_own_server", nil) forState:UIControlStateNormal];
     buttonHost.titleLabel.font = [UIFont systemFontOfSize:14];
-    [buttonHost setTitleColor:[UIColor lightGrayColor] forState:UIControlStateNormal];
+    [buttonHost setTitleColor:[UIColor colorWithRed:255.0/255.0 green:255.0/255.0 blue:255.0/255.0 alpha:0.7] forState:UIControlStateNormal];
     buttonHost.backgroundColor = [UIColor clearColor];
     [buttonHost addTarget:self action:@selector(host:) forControlEvents:UIControlEventTouchDown];
     
     [buttonView addSubview:buttonHost];
     
     // Pages
+    
+    /*
+    EAIntroPage *page1 = [EAIntroPage pageWithCustomViewFromNibNamed:@"NCIntroPage1"];
+    page1.customView.backgroundColor = [[NCBrandColor sharedInstance] customer];
+    UILabel *titlePage1 = (UILabel *)[page1.customView viewWithTag:1];
+    titlePage1.text = NSLocalizedString(@"_intro_1_title_", nil);
+    */
     
     EAIntroPage *page1 = [EAIntroPage page];
 
@@ -199,8 +202,9 @@
     self.intro = [[EAIntroView alloc] initWithFrame:self.rootView.bounds andPages:@[page1,page2,page3,page4]];
 
     self.intro.tapToNext = NO;
-    self.intro.pageControl.pageIndicatorTintColor = [UIColor whiteColor];
-    self.intro.pageControl.currentPageIndicatorTintColor = [UIColor blackColor];
+    self.intro.pageControlY = height - buttonPosition + 50;
+    self.intro.pageControl.pageIndicatorTintColor = [[NCBrandColor sharedInstance] nextcloudSoft];
+    self.intro.pageControl.currentPageIndicatorTintColor = [UIColor whiteColor];
     self.intro.pageControl.backgroundColor = [[NCBrandColor sharedInstance] customer];
 //    [intro.skipButton setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
 //    intro.skipButton.enabled = NO;
@@ -230,42 +234,41 @@
 }
 
 #pragma --------------------------------------------------------------------------------------------
-#pragma mark ===== Web =====
+#pragma mark ===== Action =====
 #pragma --------------------------------------------------------------------------------------------
+
+- (void)login:(id)sender
+{
+    selector = k_intro_login;
+    [self.intro hideWithFadeOutDuration:0.7];
+}
+
+- (void)signUp:(id)sender
+{
+    selector = k_intro_signup;
+    [self.intro hideWithFadeOutDuration:0.7];
+}
 
 - (void)host:(id)sender
 {
     AppDelegate *appDelegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
     
-    SwiftModalWebVC *webVC = [[SwiftModalWebVC alloc] initWithUrlString:[NCBrandOptions sharedInstance].linkLoginHost colorText:[UIColor whiteColor] colorDoneButton:[UIColor blackColor] doneButtonVisible:YES hideToolbar:NO];    
+    SwiftModalWebVC *webVC = [[SwiftModalWebVC alloc] initWithUrlString:[NCBrandOptions sharedInstance].linkLoginHost colorText:[UIColor whiteColor] colorDoneButton:[UIColor blackColor] doneButtonVisible:YES hideToolbar:NO];
     webVC.delegateWeb = self;
     
     [appDelegate.window.rootViewController presentViewController:webVC animated:YES completion:nil];
 }
-    
 - (void)didStartLoading
 {
-    
 }
-
 - (void)didReceiveServerRedirectForProvisionalNavigationWithUrl:(NSURL *)url
 {
-    
 }
-
 - (void)didFinishLoadingWithSuccess:(BOOL)success url:(NSURL *)url
 {
-    
 }
-
 - (void)webDismiss
 {
-    
-}
-
-- (void)decidePolicyForNavigationAction:(WKWebView *)webView decidePolicyFor:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
-{
-    decisionHandler(WKNavigationActionPolicyAllow);
 }
 
 @end

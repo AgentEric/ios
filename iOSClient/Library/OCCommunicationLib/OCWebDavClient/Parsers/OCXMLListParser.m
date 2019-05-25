@@ -158,7 +158,8 @@
         
     } else if ([elementName isEqualToString:@"oc:id"]) {
         _currentFile.ocId = _xmlChars;
-        
+    } else if ([elementName isEqualToString:@"oc:fileid"]) {
+        _currentFile.id = (double)[_xmlChars doubleValue];
     } else if ([elementName hasSuffix:@":getetag"] && [_xmlChars length]) {
         
         //ETAG
@@ -201,6 +202,8 @@
         _currentFile.trashbinOriginalLocation = _xmlChars;
     }else if ([elementName isEqualToString:@"nc:trashbin-deletion-time"]) {
         _currentFile.trashbinDeletionTime = (long)[_xmlChars longLongValue];
+    }else if ([elementName isEqualToString:@"nc:has-preview"] && [_xmlChars length]) {
+        _currentFile.hasPreview = [_xmlChars boolValue];
     }
 }
 

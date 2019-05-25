@@ -19,7 +19,6 @@
         self.versionString = @"";
         self.versionEdition = @"";
         self.corePollInterval = 0;
-        self.filesSharingExpireDateDaysNumber = 0;
         
         self.themingBackground = @"";
         self.themingColor = @"";
@@ -39,7 +38,9 @@
         
         self.spreedFeatures = @"";
         
-        self.RichdocumentsMimetypes = [NSArray new];
+        self.richdocumentsMimetypes = [NSArray new];
+        
+        self.HCShopUrl = @"";
     }
     return self;
 }

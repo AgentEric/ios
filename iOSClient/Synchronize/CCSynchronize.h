@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 19/10/16.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -35,11 +35,25 @@
 + (CCSynchronize *)sharedSynchronize;
 
 @property (nonatomic, strong) NSMutableOrderedSet *foldersInSynchronized;
+@property (nonatomic, strong) NSOperationQueue *operationSynchronizeQueue;
 
-- (void)readFolder:(NSString *)serverUrl selector:(NSString *)selector;
-- (void)readFileForFolder:(NSString *)fileName serverUrl:(NSString *)serverUrl selector:(NSString *)selector;
-- (void)readFile:(tableMetadata *)metadata selector:(NSString *)selector;
+- (void)readFolder:(NSString *)serverUrl selector:(NSString *)selector account:(NSString *)account;
+- (void)readFile:(NSString *)fileID fileName:(NSString *)fileName serverUrl:(NSString *)serverUrl selector:(NSString *)selector account:(NSString *)account;
 
 - (void)verifyChangeMedatas:(NSArray *)allRecordMetadatas serverUrl:(NSString *)serverUrl account:(NSString *)account withDownload:(BOOL)withDownload;
+
+@end
+
+@interface CCOperationSynchronize : NSOperation
+
+- (id)initWithDelegate:(id)delegate serverUrl:(NSString *)serverUrl selector:(NSString *)selector account:(NSString *)account;
+
+@property (nonatomic, assign) BOOL isExecuting;
+@property (nonatomic, assign) BOOL isFinished;
+
+@property (nonatomic, weak) id delegate;
+@property (nonatomic, strong) NSString* account;
+@property (nonatomic, strong) NSString* serverUrl;
+@property (nonatomic, strong) NSString* selector;
 
 @end

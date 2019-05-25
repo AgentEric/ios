@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 06/11/15.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 
 @implementation CCAdvanced
 
--(id)init
+- (id)init
 {
     XLFormDescriptor *form ;
     XLFormSectionDescriptor *section;
@@ -46,34 +46,6 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(changeTheming) name:@"changeTheming" object:nil];
     
     form = [XLFormDescriptor formDescriptorWithTitle:NSLocalizedString(@"_advanced_", nil)];
-
-    // Section ACTIVITY -------------------------------------------------
-    
-    section = [XLFormSectionDescriptor formSectionWithTitle:NSLocalizedString(@"_activity_", nil)];
-    [form addFormSection:section];
-    
-    row = [XLFormRowDescriptor formRowDescriptorWithTag:@"activityVerboseHigh" rowType:XLFormRowDescriptorTypeBooleanSwitch title:NSLocalizedString(@"_help_activity_verbose_", nil)];
-    [row.cellConfig setObject:[UIFont systemFontOfSize:15.0]forKey:@"textLabel.font"];
-    [row.cellConfig setObject:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"activityHigh"] multiplier:2 color:[NCBrandColor sharedInstance].icon] forKey:@"imageView.image"];
-    if ([CCUtility getActivityVerboseHigh]) row.value = @"1";
-    else row.value = @"0";
-    [section addFormRow:row];
-    
-    row = [XLFormRowDescriptor formRowDescriptorWithTag:@"sendMailActivity" rowType:XLFormRowDescriptorTypeButton title:NSLocalizedString(@"_help_activity_mail_", nil)];
-    [row.cellConfig setObject:@(NSTextAlignmentLeft) forKey:@"textLabel.textAlignment"];
-    [row.cellConfig setObject:[UIColor blackColor] forKey:@"textLabel.textColor"];
-    [row.cellConfig setObject:[UIFont systemFontOfSize:15.0]forKey:@"textLabel.font"];
-    [row.cellConfig setObject:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"mail"] multiplier:2 color:[NCBrandColor sharedInstance].icon] forKey:@"imageView.image"];
-    row.action.formSelector = @selector(sendMail:);
-    [section addFormRow:row];
-
-    row = [XLFormRowDescriptor formRowDescriptorWithTag:@"clearActivityLog" rowType:XLFormRowDescriptorTypeButton title:NSLocalizedString(@"_help_activity_clear_", nil)];
-    [row.cellConfig setObject:[UIFont systemFontOfSize:15.0]forKey:@"textLabel.font"];
-    [row.cellConfig setObject:[UIColor blackColor] forKey:@"textLabel.textColor"];
-    [row.cellConfig setObject:@(NSTextAlignmentLeft) forKey:@"textLabel.textAlignment"];
-    [row.cellConfig setObject:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"delete"] multiplier:2 color:[NCBrandColor sharedInstance].icon] forKey:@"imageView.image"];
-    row.action.formSelector = @selector(clearActivity:);
-    [section addFormRow:row];
     
     // Section HIDDEN FILES -------------------------------------------------
 
@@ -114,17 +86,31 @@
         [section addFormRow:row];
     }
     
+    // Section : Privacy --------------------------------------------------------------
+
+    section = [XLFormSectionDescriptor formSectionWithTitle:NSLocalizedString(@"_privacy_", nil)];
+    [form addFormSection:section];
+    section.footerTitle = NSLocalizedString(@"_privacy_footer_", nil);
+    
+    row = [XLFormRowDescriptor formRowDescriptorWithTag:@"crashservice" rowType:XLFormRowDescriptorTypeBooleanSwitch title:NSLocalizedString(@"_crashservice_title_", nil)];
+    [row.cellConfig setObject:[UIFont systemFontOfSize:15.0]forKey:@"textLabel.font"];
+    [row.cellConfig setObject:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"crashservice"] width:50 height:50 color:[NCBrandColor sharedInstance].icon] forKey:@"imageView.image"];
+    if ([CCUtility getDisableCrashservice]) row.value = @"1";
+    else row.value = @"0";
+    [section addFormRow:row];
+    
     // Section CLEAR CACHE -------------------------------------------------
     
     section = [XLFormSectionDescriptor formSection];
     [form addFormSection:section];
-    
+    section.footerTitle = NSLocalizedString(@"_clear_cache_footer_", nil);
+
     // Clear cache
-    row = [XLFormRowDescriptor formRowDescriptorWithTag:@"azzeracache" rowType:XLFormRowDescriptorTypeButton title:NSLocalizedString(@"_clear_cache_no_size_", nil)];
+    row = [XLFormRowDescriptor formRowDescriptorWithTag:@"azzeracache" rowType:XLFormRowDescriptorTypeButton title:NSLocalizedString(@"_clear_cache_", nil)];
     [row.cellConfig setObject:[UIFont systemFontOfSize:15.0]forKey:@"textLabel.font"];
     [row.cellConfig setObject:[UIColor blackColor] forKey:@"textLabel.textColor"];
     [row.cellConfig setObject:@(NSTextAlignmentLeft) forKey:@"textLabel.textAlignment"];
-    [row.cellConfig setObject:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"delete"] multiplier:2 color:[NCBrandColor sharedInstance].icon] forKey:@"imageView.image"];
+    [row.cellConfig setObject:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"trash"] width:50 height:50 color:[NCBrandColor sharedInstance].icon] forKey:@"imageView.image"];
     row.action.formSelector = @selector(clearCache:);
     [section addFormRow:row];
 
@@ -132,13 +118,14 @@
     
     section = [XLFormSectionDescriptor formSection];
     [form addFormSection:section];
+    section.footerTitle = NSLocalizedString(@"_exit_footer_", nil);
     
     // Exit
     row = [XLFormRowDescriptor formRowDescriptorWithTag:@"esci" rowType:XLFormRowDescriptorTypeButton title:NSLocalizedString(@"_exit_", nil)];
     [row.cellConfig setObject:@(NSTextAlignmentLeft) forKey:@"textLabel.textAlignment"];
     [row.cellConfig setObject:[UIColor redColor] forKey:@"textLabel.textColor"];
     [row.cellConfig setObject:[UIFont systemFontOfSize:15.0]forKey:@"textLabel.font"];
-    [row.cellConfig setObject:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"exit"] multiplier:2 color:[UIColor redColor]] forKey:@"imageView.image"];
+    [row.cellConfig setObject:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"exit"] width:50 height:50 color:[UIColor redColor]] forKey:@"imageView.image"];
     row.action.formSelector = @selector(exitNextcloud:);
     [section addFormRow:row];
 
@@ -163,8 +150,6 @@
     // Color
     [appDelegate aspectNavigationControllerBar:self.navigationController.navigationBar online:[appDelegate.reachability isReachable] hidden:NO];
     [appDelegate aspectTabBar:self.tabBarController.tabBar hidden:NO];
-    
-    //[self recalculateSize];
 }
 
 - (void)changeTheming
@@ -176,14 +161,6 @@
 - (void)formRowDescriptorValueHasChanged:(XLFormRowDescriptor *)rowDescriptor oldValue:(id)oldValue newValue:(id)newValue
 {
     [super formRowDescriptorValueHasChanged:rowDescriptor oldValue:oldValue newValue:newValue];
-    
-    if ([rowDescriptor.tag isEqualToString:@"activityVerboseHigh"]) {
-        
-        [CCUtility setActivityVerboseHigh:[[rowDescriptor.value valueData] boolValue]];
-        
-        // Clear Date read Activity for force reload datasource
-        appDelegate.activeActivity.storeDateFirstActivity = nil;
-    }
     
     if ([rowDescriptor.tag isEqualToString:@"showHiddenFiles"]) {
         
@@ -202,118 +179,19 @@
         
         [CCUtility setDisableFilesApp:[[rowDescriptor.value valueData] boolValue]];
     }
-}
-
-#pragma --------------------------------------------------------------------------------------------
-#pragma mark === Mail ===
-#pragma --------------------------------------------------------------------------------------------
-
-- (void) mailComposeController:(MFMailComposeViewController *)vc didFinishWithResult:(MFMailComposeResult)result error:(NSError *)error
-{
-    switch (result)
-    {
-        case MFMailComposeResultCancelled:
-            [appDelegate messageNotification:@"_info_" description:@"_mail_deleted_" visible:YES delay:k_dismissAfterSecond type:TWMessageBarMessageTypeSuccess errorCode: error.code];
-            break;
-        case MFMailComposeResultSaved:
-            [appDelegate messageNotification:@"_info_" description:@"_mail_saved_" visible:YES delay:k_dismissAfterSecond type:TWMessageBarMessageTypeSuccess errorCode: error.code];
-            break;
-        case MFMailComposeResultSent:
-            [appDelegate messageNotification:@"_info_" description:@"_mail_sent_" visible:YES delay:k_dismissAfterSecond type:TWMessageBarMessageTypeSuccess errorCode: error.code];
-            break;
-        case MFMailComposeResultFailed: {
-            NSString *msg = [NSString stringWithFormat:NSLocalizedString(@"_mail_failure_", nil), [error localizedDescription]];
-            [appDelegate messageNotification:@"_error_" description:msg visible:YES delay:k_dismissAfterSecond type:TWMessageBarMessageTypeError errorCode: error.code];
-        }
-            break;
-        default:
-            break;
+    
+    if ([rowDescriptor.tag isEqualToString:@"crashservice"]) {
+        
+        [CCUtility setDisableCrashservice:[[rowDescriptor.value valueData] boolValue]];
+        
+        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"_crashservice_title_", nil) message:NSLocalizedString(@"_crashservice_alert_", nil) preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *okAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"_ok_", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            exit(0);
+        }];
+        
+        [alertController addAction:okAction];
+        [self presentViewController:alertController animated:YES completion:nil];
     }
-    
-    // Close the Mail Interface
-    [self dismissViewControllerAnimated:YES completion:NULL];
-}
-
-- (void)sendMail:(XLFormRowDescriptor *)sender
-{
-    [self deselectFormRow:sender];
-    
-    // Email Subject
-    NSString *emailTitle = NSLocalizedString(@"_information_req_", nil);
-    // Email Content
-    NSString *messageBody;
-    // File Attachment
-    NSString *fileAttachment = @"";
-    // Email Recipents
-    NSArray *toRecipents;
-    
-    NSArray *activities = [[NCManageDatabase sharedInstance] getActivityWithPredicate:[NSPredicate predicateWithFormat:@"account == %@", appDelegate.activeAccount]];
-    
-    if ([activities count] == 0) {
-        
-        [appDelegate messageNotification:@"_info_" description:@"No activity found" visible:YES delay:k_dismissAfterSecond type:TWMessageBarMessageTypeInfo errorCode:0];
-        return;
-    }
-    
-    for (tableActivity *activity in activities) {
-        
-        NSString *date, *type, *actionFile, *note;
-        
-        date = [[NSDateFormatter localizedStringFromDate:activity.date dateStyle:NSDateFormatterShortStyle timeStyle:NSDateFormatterMediumStyle] stringByPaddingToLength:22 withString:@" " startingAtIndex:0];
-        
-        if ([activity.type isEqual: k_activityTypeInfo])    type = @"Info   ";
-        if ([activity.type isEqual: k_activityTypeSuccess]) type = @"Success";
-        if ([activity.type isEqual: k_activityTypeFailure]) type = @"Failure";
-        
-        actionFile = [[NSString stringWithFormat:@"%@ %@", activity.action, activity.file] stringByPaddingToLength:100 withString:@" " startingAtIndex:0];
-        
-        if (activity.idActivity == 0) note = [NSString stringWithFormat:@"%@ Selector: %@", activity.note, activity.selector];
-        else note = activity.note;
-        note = [note stringByPaddingToLength:200 withString:@" " startingAtIndex:0];
-        
-        fileAttachment = [fileAttachment stringByAppendingString:[NSString stringWithFormat:@"| %@ | %@ | %@ | %@ |\n", date, type, actionFile, note]];
-    }
-    
-    messageBody = [NSString stringWithFormat:@"\n\n\n%@ Version %@ (%@)", [NCBrandOptions sharedInstance].brand, [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"], [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleVersion"]];
-    
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths objectAtIndex:0];
-    NSError *error;
-    
-    // fix CCAdvanced.m line 276 2.17.2 (00005)
-    if ([fileAttachment writeToFile:[documentsDirectory stringByAppendingPathComponent:@"activity.txt"] atomically:YES encoding:NSUTF8StringEncoding error:&error] && [MFMailComposeViewController canSendMail]) {
-        
-        toRecipents = [NSArray arrayWithObject:[NCBrandOptions sharedInstance].mailMe];
-        
-        MFMailComposeViewController *mc = [[MFMailComposeViewController alloc] init];
-        mc.mailComposeDelegate = self;
-        [mc setSubject:emailTitle];
-        [mc setMessageBody:messageBody isHTML:NO];
-        [mc setToRecipients:toRecipents];
-        
-        NSData *noteData = [NSData dataWithContentsOfFile:[documentsDirectory stringByAppendingPathComponent:@"activity.txt"]];
-        [mc addAttachmentData:noteData mimeType:@"text/plain" fileName:@"activity.txt"];
-        
-        // Present mail view controller on screen
-        [self presentViewController:mc animated:YES completion:NULL];
-        
-    } else {
-        
-        [appDelegate messageNotification:@"_error_" description:@"Impossible create file body" visible:YES delay:k_dismissAfterSecond type:TWMessageBarMessageTypeError errorCode:k_CCErrorInternalError];
-    }
-}
-
-#pragma --------------------------------------------------------------------------------------------
-#pragma mark === Clear Activity ===
-#pragma --------------------------------------------------------------------------------------------
-
-- (void)clearActivity:(XLFormRowDescriptor *)sender
-{
-    [self deselectFormRow:sender];
-    
-    [[NCManageDatabase sharedInstance] clearTable:[tableActivity class] account:appDelegate.activeAccount];
-        
-    [appDelegate.activeActivity reloadDatasource];
 }
 
 #pragma --------------------------------------------------------------------------------------------
@@ -325,10 +203,6 @@
     [appDelegate maintenanceMode:YES];
     
     [self.hud visibleHudTitle:NSLocalizedString(@"_remove_cache_", nil) mode:MBProgressHUDModeIndeterminate color:nil];
-    
-    if (withDB) {
-        [appDelegate.netQueue cancelAllOperations];
-    }
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC),dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         
@@ -352,13 +226,15 @@
         if (withDB) {
             
             [[NCManageDatabase sharedInstance] clearTable:[tableActivity class] account:appDelegate.activeAccount];
+            [[NCManageDatabase sharedInstance] clearTable:[tableActivitySubjectRich class] account:appDelegate.activeAccount];
+            [[NCManageDatabase sharedInstance] clearTable:[tableActivityPreview class] account:appDelegate.activeAccount];
             [[NCManageDatabase sharedInstance] clearTable:[tableCapabilities class] account:appDelegate.activeAccount];
             [[NCManageDatabase sharedInstance] clearTable:[tableDirectory class] account:appDelegate.activeAccount];
             [[NCManageDatabase sharedInstance] clearTable:[tableE2eEncryption class] account:appDelegate.activeAccount];
             [[NCManageDatabase sharedInstance] clearTable:[tableExternalSites class] account:appDelegate.activeAccount];
             [[NCManageDatabase sharedInstance] clearTable:[tableGPS class] account:nil];
             [[NCManageDatabase sharedInstance] clearTable:[tableMetadata class] account:appDelegate.activeAccount];
-            [[NCManageDatabase sharedInstance] clearTable:[tablePhotos class] account:appDelegate.activeAccount];
+            [[NCManageDatabase sharedInstance] clearTable:[tableMedia class] account:appDelegate.activeAccount];
             [[NCManageDatabase sharedInstance] clearTable:[tablePhotoLibrary class] account:appDelegate.activeAccount];
             [[NCManageDatabase sharedInstance] clearTable:[tableShare class] account:appDelegate.activeAccount];
             
@@ -407,26 +283,6 @@
     [self presentViewController:alertController animated:YES completion:nil];
 }
 
-/*
-- (void)recalculateSize
-{
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        
-        self.form.delegate = nil;
-        
-        XLFormRowDescriptor *rowAzzeraCache = [self.form formRowWithTag:@"azzeracache"];
-        
-        NSString *size = [CCUtility transformedSize:[[self getUserDirectorySize] longValue]];
-        rowAzzeraCache.title = [NSString stringWithFormat:NSLocalizedString(@"_clear_cache_", nil), size];
-        //rowAzzeraCache.title = NSLocalizedString(@"_clear_cache_no_size_", nil);
-        
-        [self.tableView performSelectorOnMainThread:@selector(reloadData) withObject:nil waitUntilDone:NO];
-        
-        self.form.delegate = self;
-    });
-}
-*/
-
 #pragma --------------------------------------------------------------------------------------------
 #pragma mark == Exit Nextcloud ==
 #pragma --------------------------------------------------------------------------------------------
@@ -442,9 +298,7 @@
         [self.hud visibleIndeterminateHud];
         
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^(void) {
-            
-            [appDelegate.netQueue cancelAllOperations];
-            
+                        
             [[NSURLCache sharedURLCache] setMemoryCapacity:0];
             [[NSURLCache sharedURLCache] setDiskCapacity:0];
             
@@ -524,26 +378,6 @@
     
     while (file = [enumerator nextObject])
         [[NSFileManager defaultManager] removeItemAtPath:[NSString stringWithFormat:@"%@/%@", dirIniziale, file] error:nil];
-}
-
-- (NSNumber *)getUserDirectorySize
-{
-    NSURL *directoryURL = [CCUtility getDirectoryGroup];
-    unsigned long long count = 0;
-    NSNumber *value = nil;
-    
-    if (! directoryURL) return 0;
-    
-    // Get dimension Document
-    for (NSURL *url in [[NSFileManager defaultManager] enumeratorAtURL:directoryURL includingPropertiesForKeys:@[NSURLFileSizeKey] options:0 errorHandler:NULL]) {
-        if ([url getResourceValue:&value forKey:NSURLFileSizeKey error:nil]) {
-            count += [value longLongValue];
-        } else {
-            return nil;
-        }
-    }
-    
-    return @(count);
 }
 
 @end

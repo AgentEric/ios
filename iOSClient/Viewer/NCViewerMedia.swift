@@ -10,12 +10,6 @@ import Foundation
 import KTVHTTPCache
 
 class NCViewerMedia: NSObject {
-    
-    @objc static let sharedInstance: NCViewerMedia = {
-        let viewMedia = NCViewerMedia()
-        viewMedia.setupHTTPCache()
-        return viewMedia
-    }()
 
     var detail: CCDetail!
     var metadata: tableMetadata!
@@ -23,16 +17,18 @@ class NCViewerMedia: NSObject {
     let appDelegate = UIApplication.shared.delegate as! AppDelegate
     var safeAreaBottom: Int = 0
 
+    @objc static let sharedInstance: NCViewerMedia = {
+        let viewMedia = NCViewerMedia()
+        viewMedia.setupHTTPCache()
+        return viewMedia
+    }()
+
     @objc func viewMedia(_ metadata: tableMetadata, detail: CCDetail) {
         
         var videoURLProxy: URL!
 
         self.detail = detail
         self.metadata = metadata
-        
-        guard let serverUrl = NCManageDatabase.sharedInstance.getServerUrl(metadata.directoryID) else {
-            return
-        }
         
         guard let rootView = UIApplication.shared.keyWindow else {
             return
@@ -49,7 +45,7 @@ class NCViewerMedia: NSObject {
         
         } else {
             
-            guard let stringURL = (serverUrl + "/" + metadata.fileName).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            guard let stringURL = (metadata.serverUrl + "/" + metadata.fileName).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
                 return
             }
             
@@ -101,7 +97,8 @@ class NCViewerMedia: NSObject {
             
             // Save cache
             if !CCUtility.fileProviderStorageExists(self.metadata.fileID, fileNameView:self.metadata.fileNameView) {
-                guard let url = KTVHTTPCache.cacheCompleteFileURLIfExisted(with: self.videoURL) else {
+                
+                guard let url = KTVHTTPCache.cacheCompleteFileURL(with: self.videoURL) else {
                     return
                 }
                 
@@ -110,7 +107,7 @@ class NCViewerMedia: NSObject {
                 KTVHTTPCache.cacheDelete(with: self.videoURL)
                 
                 // reload Data Source
-                NCMainCommon.sharedInstance.reloadDatasource(ServerUrl: NCManageDatabase.sharedInstance.getServerUrl(self.metadata.directoryID), fileID: self.metadata.fileID, action: k_action_MOD)
+                NCMainCommon.sharedInstance.reloadDatasource(ServerUrl:self.metadata.serverUrl, fileID: self.metadata.fileID, action: k_action_MOD)
                 
                 // Enabled Button Action (the file is in local)
                 self.detail.buttonAction.isEnabled = true
@@ -126,27 +123,24 @@ class NCViewerMedia: NSObject {
     
     @objc func setupHTTPCache() {
         
-        var error: NSError?
-
         KTVHTTPCache.cacheSetMaxCacheLength(Int64(k_maxHTTPCache))
         
         if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil {
             KTVHTTPCache.logSetConsoleLogEnable(true)
         }
         
-        KTVHTTPCache.proxyStart(&error)
-        if error == nil {
-            print("Proxy Start Success")
-        } else {
-            print("Proxy Start error : \(error!)")
+        do {
+            try KTVHTTPCache.proxyStart()
+        } catch let error {
+            print("Proxy Start error : \(error)")
         }
-    
-        KTVHTTPCache.tokenSetURLFilter { (url) -> URL? in
+        
+        KTVHTTPCache.encodeSetURLConverter { (url) -> URL? in
             print("URL Filter reviced URL : " + String(describing: url))
             return url
         }
         
-        KTVHTTPCache.downloadSetUnsupportContentTypeFilter { (url, contentType) -> Bool in
+        KTVHTTPCache.downloadSetUnacceptableContentTypeDisposer { (url, contentType) -> Bool in
             print("Unsupport Content-Type Filter reviced URL : " + String(describing: url) + " " + String(describing: contentType))
             return false
         }

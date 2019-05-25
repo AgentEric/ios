@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 04/09/14.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -50,15 +50,15 @@
 {
     [super viewDidLoad];
     
-    tableAccount *recordAccount = [[NCManageDatabase sharedInstance] getAccountActive];
+    tableAccount *tableAccount = [[NCManageDatabase sharedInstance] getAccountActive];
     
-    if (recordAccount) {
+    if (tableAccount) {
         
-        activeAccount = recordAccount.account;
-        activePassword = recordAccount.password;
-        activeUrl = recordAccount.url;
-        activeUser = recordAccount.user;
-        activeUserID = recordAccount.userID;
+        activeAccount = tableAccount.account;
+        activePassword = [CCUtility getPassword:tableAccount.account];
+        activeUrl = tableAccount.url;
+        activeUser = tableAccount.user;
+        activeUserID = tableAccount.userID;
         
     } else {
         
@@ -79,11 +79,11 @@
         
         _serverUrl = [CCUtility getHomeServerUrlActiveUrl:activeUrl];
         
-        tableCapabilities *capabilities = [[NCManageDatabase sharedInstance] getCapabilites];
+        tableCapabilities *capabilities = [[NCManageDatabase sharedInstance] getCapabilitesWithAccount:activeAccount];
         if ([capabilities.themingColor isEqualToString:@"#FFFFFF"])
-            image = [[UIImageView alloc] initWithImage:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"navigationLogo"] multiplier:2 color:[UIColor blackColor]]];
+            image = [[UIImageView alloc] initWithImage:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"themingLogo"] multiplier:2 color:[UIColor blackColor]]];
         else
-            image = [[UIImageView alloc] initWithImage:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"navigationLogo"] multiplier:2 color:[UIColor whiteColor]]];
+            image = [[UIImageView alloc] initWithImage:[CCGraphics changeThemingColorImage:[UIImage imageNamed:@"themingLogo"] multiplier:2 color:[UIColor whiteColor]]];
 
         [self.navigationController.navigationBar.topItem setTitleView:image];
         self.title = @"Home";
@@ -185,8 +185,6 @@
 
 - (IBAction)move:(UIBarButtonItem *)sender
 {
-    [_networkingOperationQueue cancelAllOperations];
- 
     if ([self.delegate respondsToSelector:@selector(dismissMove)])
         [self.delegate dismissMove];
     
@@ -279,19 +277,15 @@
 
 - (void)readFile
 {
-    OCnetworking *ocNetworking = [[OCnetworking alloc] initWithDelegate:nil metadataNet:nil withUser:activeUser withUserID:activeUserID withPassword:activePassword withUrl:activeUrl];
-
-    [ocNetworking readFile:nil serverUrl:_serverUrl account:activeAccount success:^(tableMetadata *metadata) {
-        
-        tableDirectory *directory = [[NCManageDatabase sharedInstance] getTableDirectoryWithPredicate:[NSPredicate predicateWithFormat:@"account == %@ AND serverUrl == %@", activeAccount, _serverUrl]];
-            
-        if ([metadata.etag isEqualToString:directory.etag] == NO) {
-                
+    [[OCNetworking sharedManager] readFileWithAccount:activeAccount serverUrl:_serverUrl fileName:nil completion:^(NSString *account, tableMetadata *metadata, NSString *message, NSInteger errorCode) {
+        if (errorCode == 0) {
+            tableDirectory *directory = [[NCManageDatabase sharedInstance] getTableDirectoryWithPredicate:[NSPredicate predicateWithFormat:@"account == %@ AND serverUrl == %@", account, _serverUrl]];
+            if ([metadata.etag isEqualToString:directory.etag] == NO) {
+                [self readFolder];
+            }
+        } else {
             [self readFolder];
         }
-        
-    } failure:^(NSString *message, NSInteger errorCode) {
-        [self readFolder];
     }];
 }
 
@@ -299,44 +293,44 @@
 
 - (void)readFolder
 {
-    OCnetworking *ocNetworking = [[OCnetworking alloc] initWithDelegate:nil metadataNet:nil withUser:activeUser withUserID:activeUserID withPassword:activePassword withUrl:activeUrl];
-
-    [ocNetworking readFolder:_serverUrl depth:@"1" account:activeAccount success:^(NSArray *metadatas, tableMetadata *metadataFolder, NSString *directoryID) {
+    [[OCNetworking sharedManager] readFolderWithAccount:activeAccount serverUrl:_serverUrl depth:@"1" completion:^(NSString *account, NSArray *metadatas, tableMetadata *metadataFolder, NSString *message, NSInteger errorCode) {
         
-        // Update directory etag
-        [[NCManageDatabase sharedInstance] setDirectoryWithServerUrl:_serverUrl serverUrlTo:nil etag:metadataFolder.etag fileID:metadataFolder.fileID encrypted:metadataFolder.e2eEncrypted];
-        [[NCManageDatabase sharedInstance] deleteMetadataWithPredicate:[NSPredicate predicateWithFormat:@"directoryID == %@ AND (status == %d OR status == %d)", directoryID, k_metadataStatusNormal, k_metadataStatusHide] clearDateReadDirectoryID:directoryID];
-        [[NCManageDatabase sharedInstance] setDateReadDirectoryWithDirectoryID:directoryID];
-        
-        NSArray *metadatasInDownload = [[NCManageDatabase sharedInstance] getMetadatasWithPredicate:[NSPredicate predicateWithFormat:@"directoryID == %@ AND (status == %d OR status == %d OR status == %d OR status == %d)", directoryID, k_metadataStatusWaitDownload, k_metadataStatusInDownload, k_metadataStatusDownloading, k_metadataStatusDownloadError] sorted:nil ascending:NO];
-        
-        // insert in Database
-        (void)[[NCManageDatabase sharedInstance] addMetadatas:metadatas serverUrl:_serverUrl];
-        // reinsert metadatas in Download
-        if (metadatasInDownload) {
-            (void)[[NCManageDatabase sharedInstance] addMetadatas:metadatasInDownload serverUrl:_serverUrl];
+        if (errorCode == 0 && [account isEqualToString:activeAccount]) {
+            
+            // Update directory etag
+            [[NCManageDatabase sharedInstance] setDirectoryWithServerUrl:_serverUrl serverUrlTo:nil etag:metadataFolder.etag fileID:metadataFolder.fileID encrypted:metadataFolder.e2eEncrypted account:activeAccount];
+            [[NCManageDatabase sharedInstance] deleteMetadataWithPredicate:[NSPredicate predicateWithFormat:@"account == %@ AND serverUrl == %@ AND (status == %d OR status == %d)", activeAccount, _serverUrl, k_metadataStatusNormal, k_metadataStatusHide]];
+            [[NCManageDatabase sharedInstance] setDateReadDirectoryWithServerUrl:_serverUrl account:activeAccount];
+            
+            NSArray *metadatasInDownload = [[NCManageDatabase sharedInstance] getMetadatasWithPredicate:[NSPredicate predicateWithFormat:@"account == %@ AND serverUrl == %@ AND (status == %d OR status == %d OR status == %d OR status == %d)", activeAccount, _serverUrl, k_metadataStatusWaitDownload, k_metadataStatusInDownload, k_metadataStatusDownloading, k_metadataStatusDownloadError] sorted:nil ascending:NO];
+            
+            // insert in Database
+            (void)[[NCManageDatabase sharedInstance] addMetadatas:metadatas];
+            // reinsert metadatas in Download
+            if (metadatasInDownload) {
+                (void)[[NCManageDatabase sharedInstance] addMetadatas:metadatasInDownload];
+            }
+            
+        } else if (errorCode != 0) {
+            
+            self.move.enabled = NO;
+            
+            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"_error_",nil) message:message preferredStyle:UIAlertControllerStyleAlert];
+            
+            [alertController addAction: [UIAlertAction actionWithTitle:NSLocalizedString(@"_ok_", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            }]];
+            
+            [self presentViewController:alertController animated:YES completion:nil];
+        } else {
+            NSLog(@"[LOG] It has been changed user during networking process, error.");
         }
         
         _loadingFolder = NO;
         
         [self.tableView reloadData];
         
-    } failure:^(NSString *message, NSInteger errorCode) {
-        
-        _loadingFolder = NO;
-        self.move.enabled = NO;
-        
-        [self.tableView reloadData];
-        
-        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"_error_",nil) message:message preferredStyle:UIAlertControllerStyleAlert];
-        
-        [alertController addAction: [UIAlertAction actionWithTitle:NSLocalizedString(@"_ok_", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        }]];
-        
-        [self presentViewController:alertController animated:YES completion:nil];
-        
     }];
-
+    
     _loadingFolder = YES;
     [self.tableView reloadData];
 }
@@ -345,17 +339,17 @@
 
 - (void)createFolder:(NSString *)fileNameFolder
 {
-    OCnetworking *ocNetworking = [[OCnetworking alloc] initWithDelegate:nil metadataNet:nil withUser:activeUser withUserID:activeUserID withPassword:activePassword withUrl:activeUrl];
-    
-    [ocNetworking createFolder:fileNameFolder serverUrl:_serverUrl account:activeAccount success:^(NSString *fileID, NSDate *date) {
-        [self readFolder];
-    } failure:^(NSString *message, NSInteger errorCode) {
-        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"_error_",nil) message:message preferredStyle:UIAlertControllerStyleAlert];
-        
-        [alertController addAction: [UIAlertAction actionWithTitle:NSLocalizedString(@"_ok_", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        }]];
-        
-        [self presentViewController:alertController animated:YES completion:nil];
+    [[OCNetworking sharedManager] createFolderWithAccount:activeAccount serverUrl:_serverUrl fileName:fileNameFolder completion:^(NSString *account, NSString *fileID, NSDate *date, NSString *message, NSInteger errorCode) {
+       
+        if (errorCode == 0 && [account isEqualToString:activeAccount]) {
+            [self readFolder];
+        } else if (errorCode != 0) {
+            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"_error_",nil) message:message preferredStyle:UIAlertControllerStyleAlert];
+            [alertController addAction: [UIAlertAction actionWithTitle:NSLocalizedString(@"_ok_", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) { }]];
+            [self presentViewController:alertController animated:YES completion:nil];
+        } else {
+            NSLog(@"[LOG] It has been changed user during networking process, error.");
+        }
     }];
 }
 
@@ -368,23 +362,20 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    NSString *directoryID = [[NCManageDatabase sharedInstance] getDirectoryID:_serverUrl];
-    if (!directoryID) return 0;
-
     if (self.includeDirectoryE2EEncryption) {
         
         if (self.includeImages) {
-            predicateDataSource = [NSPredicate predicateWithFormat:@"directoryID == %@ AND (directory == true OR typeFile == 'image')", directoryID];
+            predicateDataSource = [NSPredicate predicateWithFormat:@"account == %@ AND serverUrl == %@ AND (directory == true OR typeFile == 'image')", activeAccount, _serverUrl];
         } else {
-            predicateDataSource = [NSPredicate predicateWithFormat:@"directoryID == %@ AND directory == true", directoryID];
+            predicateDataSource = [NSPredicate predicateWithFormat:@"account == %@ AND serverUrl == %@ AND directory == true", activeAccount, _serverUrl];
         }
         
     } else {
         
         if (self.includeImages) {
-            predicateDataSource = [NSPredicate predicateWithFormat:@"directoryID == %@ AND e2eEncrypted == false AND (directory == true OR typeFile == 'image')", directoryID];
+            predicateDataSource = [NSPredicate predicateWithFormat:@"account == %@ AND serverUrl == %@ AND e2eEncrypted == false AND (directory == true OR typeFile == 'image')", activeAccount, _serverUrl];
         } else {
-            predicateDataSource = [NSPredicate predicateWithFormat:@"directoryID == %@ AND e2eEncrypted == false AND directory == true", directoryID];
+            predicateDataSource = [NSPredicate predicateWithFormat:@"account == %@ AND serverUrl == %@ AND e2eEncrypted == false AND directory == true", activeAccount, _serverUrl];
         }
     }
     
@@ -475,8 +466,6 @@
     NSString *nomeDir;
 
     NSIndexPath *index = [self.tableView indexPathForSelectedRow];
-    NSString *directoryID = [[NCManageDatabase sharedInstance] getDirectoryID:_serverUrl];
-    if (!directoryID) return;
     
     tableMetadata *metadata = [[NCManageDatabase sharedInstance] getMetadataAtIndexWithPredicate:predicateDataSource sorted:@"fileName" ascending:YES index:index.row];
     
@@ -532,7 +521,6 @@
     viewController.hideMoveutton = self.hideMoveutton;
     viewController.selectFile = self.selectFile;
     viewController.type = self.type;
-    viewController.networkingOperationQueue = self.networkingOperationQueue;
 
     viewController.passMetadata = metadata;
     viewController.serverUrl = [CCUtility stringAppendServerUrl:_serverUrl addFileName:nomeDir];

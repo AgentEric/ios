@@ -31,7 +31,7 @@
 //  Add Support for Favorite
 //  isFavorite
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 
 #import <Foundation/Foundation.h>
@@ -46,10 +46,12 @@
 @property (nonatomic, copy) NSString *etag;
 @property (nonatomic, copy) NSString *permissions;
 @property (nonatomic, copy) NSString *ocId;
+@property double id;
 @property BOOL isFavorite;
 @property BOOL isEncrypted;
 @property (nonatomic, copy) NSString *trashbinFileName;
 @property (nonatomic, copy) NSString *trashbinOriginalLocation;
 @property long trashbinDeletionTime;
+@property int hasPreview;
 
 @end

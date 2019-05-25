@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 04/02/16.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -74,14 +74,31 @@
 //
 // orderByField : nil, date, typeFile
 //
-+ (CCSectionDataSourceMetadata *)creataDataSourseSectionMetadata:(NSArray *)arrayMetadatas listProgressMetadata:(NSMutableDictionary *)listProgressMetadata groupByField:(NSString *)groupByField filterFileID:(NSArray *)filterFileID filterTypeFileImage:(BOOL)filterTypeFileImage filterTypeFileVideo:(BOOL)filterTypeFileVideo activeAccount:(NSString *)activeAccount
++ (CCSectionDataSourceMetadata *)creataDataSourseSectionMetadata:(NSArray *)arrayMetadatas listProgressMetadata:(NSMutableDictionary *)listProgressMetadata groupByField:(NSString *)groupByField filterFileID:(NSArray *)filterFileID filterTypeFileImage:(BOOL)filterTypeFileImage filterTypeFileVideo:(BOOL)filterTypeFileVideo sorted:(NSString *)sorted ascending:(BOOL)ascending activeAccount:(NSString *)activeAccount
 {
     id dataSection;
-
+    
     NSMutableArray *metadatas = [NSMutableArray new];
     NSMutableDictionary *dictionaryEtagMetadataForIndexPath = [NSMutableDictionary new];
-    
     CCSectionDataSourceMetadata *sectionDataSource = [CCSectionDataSourceMetadata new];
+    
+    /*
+     Metadata order
+    */
+    
+    NSArray *arraySoprtedMetadatas = [arrayMetadatas sortedArrayUsingComparator:^NSComparisonResult(tableMetadata *obj1, tableMetadata *obj2) {
+        // Sort with Locale
+        if ([sorted isEqualToString:@"date"]) {
+            if (ascending) return [obj1.date compare:obj2.date];
+            else return [obj2.date compare:obj1.date];
+        } else if ([sorted isEqualToString:@"sessionTaskIdentifier"]) {
+            if (ascending) return (obj1.sessionTaskIdentifier > obj2.sessionTaskIdentifier);
+            else return (obj2.sessionTaskIdentifier < obj1.sessionTaskIdentifier);
+        } else {
+            if (ascending) return [obj1.fileName compare:obj2.fileName options:NSCaseInsensitiveSearch range:NSMakeRange(0,[obj1.fileName length]) locale:[NSLocale currentLocale]];
+            else return [obj2.fileName compare:obj1.fileName options:NSCaseInsensitiveSearch range:NSMakeRange(0,[obj2.fileName length]) locale:[NSLocale currentLocale]];
+        }
+    }];
     
     /*
      Initialize datasource
@@ -92,7 +109,7 @@
     BOOL directoryOnTop = [CCUtility getDirectoryOnTop];
     NSMutableArray *metadataFilesFavorite = [NSMutableArray new];
     
-    for (tableMetadata *metadata in arrayMetadatas) {
+    for (tableMetadata *metadata in arraySoprtedMetadatas) {
         
         // *** LIST : DO NOT INSERT ***
         if (metadata.status == k_metadataStatusHide || [filterFileID containsObject: metadata.fileID] || (filterTypeFileImage == YES && [metadata.typeFile isEqualToString: k_metadataTypeFile_image]) || (filterTypeFileVideo == YES && [metadata.typeFile isEqualToString: k_metadataTypeFile_video])) {
@@ -164,10 +181,12 @@
     Sections order
     */
     
+    /*
     BOOL ascending;
     
     if ([groupByField isEqualToString:@"date"]) ascending = NO;
     else ascending = YES;
+    */
     
     NSArray *sortSections = [[sectionDataSource.sectionArrayRow allKeys] sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2) {
         
@@ -184,8 +203,14 @@
         if ([obj1 isKindOfClass:[NSString class]] && [obj1 containsString: k_metadataTypeFile_directory]) return NSOrderedAscending;
         if ([obj2 isKindOfClass:[NSString class]] && [obj2 containsString: k_metadataTypeFile_directory]) return NSOrderedDescending;
         
-        if (ascending) return [obj1 compare:obj2];
-        else return [obj2 compare:obj1];
+        // Sort with Locale
+        if ([obj1 isKindOfClass:[NSDate class]]) {
+            if (ascending) return [obj1 compare:obj2];
+            else return [obj2 compare:obj1];
+        } else {
+            if (ascending) return [obj1 compare:obj2 options:NSCaseInsensitiveSearch range:NSMakeRange(0,[obj1 length]) locale:[NSLocale currentLocale]];
+            else return [obj2 compare:obj1 options:NSCaseInsensitiveSearch range:NSMakeRange(0,[obj2 length]) locale:[NSLocale currentLocale]];
+        }
     }];
     
     /*

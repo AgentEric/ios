@@ -28,7 +28,7 @@
 //  Add : Support for Favorite
 //  Add : getActivityServer
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
 
@@ -45,7 +45,6 @@
 #import "OCWebDAVClient.h"
 #import "OCXMLShareByLinkParser.h"
 #import "OCErrorMsg.h"
-#import "AFURLSessionManager.h"
 #import "OCShareUser.h"
 #import "OCActivity.h"
 #import "OCExternalSites.h"
@@ -54,6 +53,8 @@
 #import "OCNotificationsAction.h"
 #import "OCRichObjectStrings.h"
 #import "OCUserProfile.h"
+#import "NCRichDocumentTemplate.h"
+#import "HCFeatures.h"
 
 @interface OCCommunication ()
 
@@ -624,7 +625,7 @@
 ///-----------------------------------
 /// @name search
 ///-----------------------------------
-- (void)search:(NSString *)path folder:(NSString *)folder fileName:(NSString *)fileName depth:(NSString *)depth dateLastModified:(NSString *)dateLastModified contentType:(NSArray *)contentType withUserSessionToken:(NSString *)token onCommunication:(OCCommunication *)sharedOCCommunication successRequest:(void(^)(NSHTTPURLResponse *response, NSArray *items, NSString *redirectedServer, NSString *token)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *token, NSString *redirectedServer)) failureRequest{
+- (void)search:(NSString *)path folder:(NSString *)folder fileName:(NSString *)fileName depth:(NSString *)depth lteDateLastModified:(NSString *)lteDateLastModified gteDateLastModified:(NSString *)gteDateLastModified contentType:(NSArray *)contentType withUserSessionToken:(NSString *)token onCommunication:(OCCommunication *)sharedOCCommunication successRequest:(void(^)(NSHTTPURLResponse *response, NSArray *items, NSString *redirectedServer, NSString *token)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *token, NSString *redirectedServer)) failureRequest{
     
     if (!token){
         token = @"no token";
@@ -635,7 +636,7 @@
     OCWebDAVClient *request = [OCWebDAVClient new];
     request = [self getRequestWithCredentials:request];
     
-    [request search:path folder:folder fileName:fileName depth:depth dateLastModified:dateLastModified contentType:contentType user:_user userID:_userID onCommunication:sharedOCCommunication withUserSessionToken:token success:^(NSHTTPURLResponse *response, id responseObject, NSString *token) {
+    [request search:path folder:folder fileName:fileName depth:depth lteDateLastModified:lteDateLastModified gteDateLastModified:gteDateLastModified contentType:contentType user:_user userID:_userID onCommunication:sharedOCCommunication withUserSessionToken:token success:^(NSHTTPURLResponse *response, id responseObject, NSString *token) {
         
         if (successRequest) {
             
@@ -896,7 +897,7 @@
     }];
 }
 
-- (void) shareFileOrFolderByServer: (NSString *) serverPath andFileOrFolderPath: (NSString *) filePath andPassword:(NSString *)password andPermission:(NSInteger)permission
+- (void) shareFileOrFolderByServer: (NSString *) serverPath andFileOrFolderPath: (NSString *) filePath andPassword:(NSString *)password andPermission:(NSInteger)permission andHideDownload:(BOOL)hideDownload
                    onCommunication:(OCCommunication *)sharedOCCommunication
                     successRequest:(void(^)(NSHTTPURLResponse *response, NSString *token, NSString *redirectedServer)) successRequest
                     failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest {
@@ -908,7 +909,7 @@
     request = [self getRequestWithCredentials:request];
     
     
-    [request shareByLinkFileOrFolderByServer:serverPath andPath:filePath andPassword:password andPermission:permission onCommunication:sharedOCCommunication success:^(NSHTTPURLResponse *response, id responseObject) {
+    [request shareByLinkFileOrFolderByServer:serverPath andPath:filePath andPassword:password andPermission:permission andHideDownload:hideDownload onCommunication:sharedOCCommunication success:^(NSHTTPURLResponse *response, id responseObject) {
         
         NSData *responseData = (NSData*) responseObject;
         
@@ -1130,7 +1131,7 @@
     }];
 }
 
-- (void) updateShare:(NSInteger)shareId ofServerPath:(NSString *)serverPath withPasswordProtect:(NSString*)password andExpirationTime:(NSString*)expirationTime andPermissions:(NSInteger)permissions
+- (void) updateShare:(NSInteger)shareId ofServerPath:(NSString *)serverPath withPasswordProtect:(NSString*)password andExpirationTime:(NSString*)expirationTime andPermissions:(NSInteger)permissions andHideDownload:(BOOL)hideDownload
                    onCommunication:(OCCommunication *)sharedOCCommunication
                     successRequest:(void(^)(NSHTTPURLResponse *response, NSString *redirectedServer)) successRequest
       failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest{
@@ -1144,7 +1145,7 @@
     request = [self getRequestWithCredentials:request];
     
     
-    [request updateShareItem:shareId ofServerPath:serverPath withPasswordProtect:password andExpirationTime:expirationTime andPermissions:permissions onCommunication:sharedOCCommunication success:^(NSHTTPURLResponse *response, id responseObject) {
+    [request updateShareItem:shareId ofServerPath:serverPath withPasswordProtect:password andExpirationTime:expirationTime andPermissions:permissions andHideDownload:hideDownload onCommunication:sharedOCCommunication success:^(NSHTTPURLResponse *response, id responseObject) {
         
         NSData *responseData = (NSData*) responseObject;
         
@@ -1335,55 +1336,115 @@
             
                 //FILE SHARING
             
-                NSNumber *fileSharingAPIEnabledNumber = (NSNumber*)[fileSharing valueForKey:@"api_enabled"];
-                NSNumber *filesSharingReSharingEnabledNumber = (NSNumber*)[fileSharing valueForKey:@"resharing"];
-            
-                capabilities.isFilesSharingAPIEnabled = fileSharingAPIEnabledNumber.boolValue;
-                capabilities.isFilesSharingReSharingEnabled = filesSharingReSharingEnabledNumber.boolValue;
-            
+                NSNumber *fileSharingAPIEnabled = (NSNumber*)[fileSharing valueForKey:@"api_enabled"];
+                NSNumber *filesSharingDefaultPermissions = (NSNumber*)[fileSharing valueForKey:@"default_permissions"];
+                NSNumber *fileSharingGroupSharing = (NSNumber*)[fileSharing valueForKey:@"group_sharing"];
+                NSNumber *filesSharingReSharing = (NSNumber*)[fileSharing valueForKey:@"resharing"];
+                
+                capabilities.isFilesSharingAPIEnabled = fileSharingAPIEnabled.boolValue;
+                capabilities.filesSharingDefaulPermissions = filesSharingDefaultPermissions.integerValue;
+                capabilities.isFilesSharingGroupSharing = fileSharingGroupSharing.boolValue;
+                capabilities.isFilesSharingReSharing = filesSharingReSharing.boolValue;
+
+                //FILE SHARING - PUBLIC
+                
                 NSDictionary *fileSharingPublic = [fileSharing valueForKey:@"public"];
             
-                NSNumber *filesSharingShareLinkEnabledNumber = (NSNumber*)[fileSharingPublic valueForKey:@"enabled"];
+                NSNumber *filesSharingPublicShareLinkEnabledNumber = (NSNumber*)[fileSharingPublic valueForKey:@"enabled"];
                 NSNumber *filesSharingAllowPublicUploadsEnabledNumber = (NSNumber*)[fileSharingPublic valueForKey:@"upload"];
-                NSNumber *filesSharingAllowUserSendMailNotificationAboutShareLinkEnabledNumber = (NSNumber*)[fileSharingPublic valueForKey:@"send_mail"];
-            
-                capabilities.isFilesSharingShareLinkEnabled = filesSharingShareLinkEnabledNumber.boolValue;
+                NSNumber *isFilesSharingAllowPublicUserSendMailNumber = (NSNumber*)[fileSharingPublic valueForKey:@"send_mail"];
+                NSNumber *filesSharingAllowPublicUploadFilesDrop = (NSNumber*)[fileSharingPublic valueForKey:@"upload_files_drop"];
+                NSNumber *filesSharingAllowPublicMultipleLinks = (NSNumber*)[fileSharingPublic valueForKey:@"multiple_links"];
+                
+                capabilities.isFilesSharingPublicShareLinkEnabled = filesSharingPublicShareLinkEnabledNumber.boolValue;
                 capabilities.isFilesSharingAllowPublicUploadsEnabled = filesSharingAllowPublicUploadsEnabledNumber.boolValue;
-                capabilities.isFilesSharingAllowUserSendMailNotificationAboutShareLinkEnabled = filesSharingAllowUserSendMailNotificationAboutShareLinkEnabledNumber.boolValue;
-            
+                capabilities.isFilesSharingAllowPublicUserSendMail = isFilesSharingAllowPublicUserSendMailNumber.boolValue;
+                capabilities.isFilesSharingAllowPublicUploadFilesDrop = filesSharingAllowPublicUploadFilesDrop.boolValue;
+                capabilities.isFilesSharingAllowPublicMultipleLinks = filesSharingAllowPublicMultipleLinks.boolValue;
+                
                 NSDictionary *fileSharingPublicExpireDate = [fileSharingPublic valueForKey:@"expire_date"];
             
-                NSNumber *filesSharingExpireDateByDefaultEnabledNumber = (NSNumber*)[fileSharingPublicExpireDate valueForKey:@"enabled"];
-                NSNumber *filesSharingExpireDateEnforceEnabledNumber = (NSNumber*)[fileSharingPublicExpireDate valueForKey:@"enforced"];
-                NSNumber *filesSharingExpireDateDaysNumber = (NSNumber*)[fileSharingPublicExpireDate valueForKey:@"days"];
-            
+                NSNumber *filesSharingPublicExpireDateByDefaultEnabledNumber = (NSNumber*)[fileSharingPublicExpireDate valueForKey:@"enabled"];
+                NSNumber *filesSharingPublicExpireDateEnforceEnabledNumber = (NSNumber*)[fileSharingPublicExpireDate valueForKey:@"enforced"];
+                NSNumber *filesSharingPublicExpireDateDaysNumber = (NSNumber*)[fileSharingPublicExpireDate valueForKey:@"days"];
     
-                capabilities.isFilesSharingExpireDateByDefaultEnabled = filesSharingExpireDateByDefaultEnabledNumber.boolValue;
-                capabilities.isFilesSharingExpireDateEnforceEnabled = filesSharingExpireDateEnforceEnabledNumber.boolValue;
-                capabilities.filesSharingExpireDateDaysNumber = filesSharingExpireDateDaysNumber.integerValue;
+                capabilities.isFilesSharingPublicExpireDateByDefaultEnabled = filesSharingPublicExpireDateByDefaultEnabledNumber.boolValue;
+                capabilities.isFilesSharingPublicExpireDateEnforceEnabled = filesSharingPublicExpireDateEnforceEnabledNumber.boolValue;
+                capabilities.filesSharingPublicExpireDateDays = filesSharingPublicExpireDateDaysNumber.integerValue;
             
                 NSDictionary *fileSharingPublicPassword = [fileSharingPublic valueForKey:@"password"];
             
-                NSNumber *filesSharingPasswordEnforcedEnabledNumber = (NSNumber*)[fileSharingPublicPassword valueForKey:@"enforced"];
+                NSNumber *fileSharingPublicPasswordEnforcedEnabled = (NSNumber*)[fileSharingPublicPassword valueForKey:@"enforced"];
             
-                capabilities.isFilesSharingPasswordEnforcedEnabled = filesSharingPasswordEnforcedEnabledNumber.boolValue;;
+                capabilities.isFilesSharingPublicPasswordEnforced = fileSharingPublicPasswordEnforcedEnabled.boolValue;
             
+                //FILE SHARING - USER
+
                 NSDictionary *fileSharingUser = [fileSharing valueForKey:@"user"];
             
-                NSNumber *filesSharingAllowUserSendMailNotificationAboutOtherUsersEnabledNumber = (NSNumber*)[fileSharingUser valueForKey:@"send_mail"];
+                NSNumber *isFilesSharingAllowUserSendMailNumber = (NSNumber*)[fileSharingUser valueForKey:@"send_mail"];
             
-                capabilities.isFilesSharingAllowUserSendMailNotificationAboutOtherUsersEnabled = filesSharingAllowUserSendMailNotificationAboutOtherUsersEnabledNumber.boolValue;
+                capabilities.isFilesSharingAllowUserSendMail = isFilesSharingAllowUserSendMailNumber.boolValue;
             
-                //FEDERATION
+                NSDictionary *fileSharingUserExpireDate = [fileSharingUser valueForKey:@"expire_date"];
+
+                NSNumber *filesSharingUserExpireDateNumber = (NSNumber*)[fileSharingUserExpireDate valueForKey:@"enabled"];
+
+                capabilities.isFilesSharingUserExpireDate = filesSharingUserExpireDateNumber.boolValue;
+                
+                //FILE SHARING - GROUP
+                
+                NSDictionary *fileSharingGroup = [fileSharing valueForKey:@"group"];
+                
+                NSNumber *filesSharingGroupEnabled = (NSNumber*)[fileSharingGroup valueForKey:@"enabled"];
+                
+                capabilities.isFilesSharingGroupEnabled = filesSharingGroupEnabled.boolValue;
+                
+                NSDictionary *fileSharingGroupExpireDate = [fileSharingGroup valueForKey:@"expire_date"];
+
+                NSNumber *filesSharingGroupExpireDateNumber = (NSNumber*)[fileSharingGroupExpireDate valueForKey:@"enabled"];
+                
+                capabilities.isFilesSharingGroupExpireDate = filesSharingGroupExpireDateNumber.boolValue;
+                
+                //FILE SHARING - FEDERATION
             
                 NSDictionary *fileSharingFederation = [fileSharing valueForKey:@"federation"];
+                NSDictionary *fileSharingFederationExpireDate = [fileSharingFederation valueForKey:@"expire_date"];
+
+                NSNumber *filesSharingFederationAllowUserSendSharesNumber = (NSNumber*)[fileSharingFederation valueForKey:@"outgoing"];
+                NSNumber *filesSharingFederationAllowUserReceiveSharesNumber = (NSNumber*)[fileSharingFederation valueForKey:@"incoming"];
+                NSNumber *filesSharingFederationExpireDateNumber = (NSNumber*)[fileSharingFederationExpireDate valueForKey:@"enabled"];
+
+                capabilities.isFilesSharingFederationAllowUserSendShares = filesSharingFederationAllowUserSendSharesNumber.boolValue;
+                capabilities.isFilesSharingFederationAllowUserReceiveShares = filesSharingFederationAllowUserReceiveSharesNumber.boolValue;
+                capabilities.isFilesSharingFederationExpireDate = filesSharingFederationExpireDateNumber.boolValue;
             
-                NSNumber *filesSharingAllowUserSendSharesToOtherServersEnabledNumber = (NSNumber*)[fileSharingFederation valueForKey:@"outgoing"];
-                NSNumber *filesSharingAllowUserReceiveSharesToOtherServersEnabledNumber = (NSNumber*)[fileSharingFederation valueForKey:@"incoming"];
-            
-                capabilities.isFilesSharingAllowUserSendSharesToOtherServersEnabled = filesSharingAllowUserSendSharesToOtherServersEnabledNumber.boolValue;
-                capabilities.isFilesSharingAllowUserReceiveSharesToOtherServersEnabled = filesSharingAllowUserReceiveSharesToOtherServersEnabledNumber.boolValue;
-            
+                //FILE SHARING - SHAREBYMAIL
+                
+                NSDictionary *fileSharingShareByMail = [fileSharing valueForKey:@"sharebymail"];
+
+                NSNumber *fileSharingShareByMailEnabled = (NSNumber*)[fileSharingShareByMail valueForKey:@"enabled"];
+                
+                capabilities.isFileSharingShareByMailEnabled = fileSharingShareByMailEnabled.boolValue;
+                
+                NSDictionary *fileSharingShareByMailExpireDate = [fileSharingShareByMail valueForKey:@"expire_date"];
+
+                NSNumber *fileSharingShareByMailExpireDateNumber = (NSNumber*)[fileSharingShareByMailExpireDate valueForKey:@"enabled"];
+
+                capabilities.isFileSharingShareByMailExpireDate = fileSharingShareByMailExpireDateNumber.boolValue;
+                
+                NSDictionary *fileSharingShareByMailPassword = [fileSharingShareByMail valueForKey:@"password"];
+                
+                NSNumber *fileSharingShareByMailPasswordNumber = (NSNumber*)[fileSharingShareByMailPassword valueForKey:@"enabled"];
+
+                capabilities.isFileSharingShareByMailPassword = fileSharingShareByMailPasswordNumber.boolValue;
+
+                NSDictionary *fileSharingShareByMailUploadFilesDrop = [fileSharingShareByMail valueForKey:@"upload_files_drop"];
+
+                NSNumber *fileSharingShareByMailUploadFilesDropNumber = (NSNumber*)[fileSharingShareByMailUploadFilesDrop valueForKey:@"enabled"];
+
+                capabilities.isFileSharingShareByMailUploadFilesDrop = fileSharingShareByMailUploadFilesDropNumber.boolValue;
+
                 // EXTERNAL SITES
             
                 NSDictionary *externalSitesDic = [capabilitiesDict valueForKey:@"external"];
@@ -1393,6 +1454,17 @@
                     capabilities.externalSiteV1 = [externalSitesArray componentsJoinedByString:@","];
                 }
                 
+                // ACTIVITY
+                
+                NSDictionary *activityDic = [capabilitiesDict valueForKey:@"activity"];
+                if (activityDic) {
+                    NSArray *activityArray = [activityDic valueForKey:@"apiv2"];
+                    if (activityArray) {
+                        capabilities.isActivityV2Enabled = YES;
+                        capabilities.activityV2 = [activityArray componentsJoinedByString:@","];
+                    }
+                }
+
                 // NOTIFICATION
                 
                 NSDictionary *notificationDic = [capabilitiesDict valueForKey:@"notifications"];
@@ -1484,7 +1556,27 @@
                 NSDictionary *richdocuments = [capabilitiesDict valueForKey:@"richdocuments"];
                 
                 if (richdocuments!= nil && [richdocuments count] > 0) {
-                    capabilities.RichdocumentsMimetypes = [richdocuments valueForKey:@"mimetypes"];
+                    capabilities.richdocumentsDirectEditing = [[richdocuments valueForKey:@"direct_editing"] boolValue];
+                    capabilities.richdocumentsMimetypes = [richdocuments valueForKey:@"mimetypes"];
+                }
+                
+                //Handwerkcloud
+                
+                NSDictionary *handwerkcloudDic = [capabilitiesDict valueForKey:@"handwerkcloud"];
+                if (handwerkcloudDic) {
+                    NSNumber *isHandwerkcloudEnabledNumber = (NSNumber*)[handwerkcloudDic valueForKey:@"enabled"];
+                    capabilities.isHandwerkcloudEnabled = isHandwerkcloudEnabledNumber.boolValue;
+                    
+                    if ([handwerkcloudDic valueForKey:@"shop_url"] && ![[handwerkcloudDic valueForKey:@"shop_url"] isEqual:[NSNull null]])
+                        capabilities.HCShopUrl = [handwerkcloudDic valueForKey:@"shop_url"];
+                }
+                
+                //Imagemeter
+                
+                NSDictionary *imagemeterDic = [capabilitiesDict valueForKey:@"imagemeter"];
+                if (imagemeterDic) {
+                    NSNumber *isImagemeterEnabledNumber = (NSNumber*)[imagemeterDic valueForKey:@"enabled"];
+                    capabilities.isImagemeterEnabled = isImagemeterEnabledNumber.boolValue;
                 }
             }
         
@@ -1527,7 +1619,7 @@
     return operation;
 }
 
-- (NSURLSessionTask *) getRemotePreviewByServer:(NSString*)serverPath ofFilePath:(NSString *)filePath withWidth:(NSInteger)fileWidth andHeight:(NSInteger)fileHeight andA:(NSInteger)a andMode:(NSString * _Nonnull)mode onCommunication:(OCCommunication *)sharedOCComunication successRequest:(void(^)(NSHTTPURLResponse *response, NSData *preview, NSString *redirectedServer)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest {
+- (NSURLSessionTask *) getRemotePreviewByServer:(NSString*)serverPath ofFilePath:(NSString *)filePath withWidth:(NSInteger)fileWidth andHeight:(NSInteger)fileHeight andA:(NSInteger)a andMode:(NSString * _Nonnull)mode path:(NSString * _Nonnull)path onCommunication:(OCCommunication *)sharedOCComunication successRequest:(void(^)(NSHTTPURLResponse *response, NSData *preview, NSString *redirectedServer)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest {
     
     serverPath = [serverPath encodeString:NSUTF8StringEncoding];
     filePath = [filePath encodeString:NSUTF8StringEncoding];
@@ -1535,7 +1627,7 @@
     OCWebDAVClient *request = [OCWebDAVClient new];
     request = [self getRequestWithCredentials:request];
     
-    OCHTTPRequestOperation *operation = [request getRemotePreviewByServer:serverPath ofFilePath:filePath withWidth:fileWidth andHeight:fileHeight andA:a andMode:mode onCommunication:sharedOCComunication success:^(NSHTTPURLResponse *response, id responseObject) {
+    OCHTTPRequestOperation *operation = [request getRemotePreviewByServer:serverPath ofFilePath:filePath withWidth:fileWidth andHeight:fileHeight andA:a andMode:mode path:path onCommunication:sharedOCComunication success:^(NSHTTPURLResponse *response, id responseObject) {
         
         NSData *responseData = (NSData*) responseObject;
         
@@ -1836,7 +1928,7 @@
 
 #pragma mark - Activity
 
-- (void) getActivityServer:(NSString*)serverPath onCommunication:(OCCommunication *)sharedOCComunication successRequest:(void(^)(NSHTTPURLResponse *response, NSArray *listOfActivity, NSString *redirectedServer)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest {
+- (void) getActivityServer:(NSString*)serverPath since:(NSInteger)since limit:(NSInteger)limit previews:(BOOL)previews link:(NSString *)link onCommunication:(OCCommunication *)sharedOCComunication successRequest:(void(^)(NSHTTPURLResponse *response, NSArray *listOfActivity, NSString *redirectedServer)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest {
 
     serverPath = [serverPath encodeString:NSUTF8StringEncoding];
     serverPath = [serverPath stringByAppendingString:k_url_acces_remote_activity_api];
@@ -1844,7 +1936,7 @@
     OCWebDAVClient *request = [OCWebDAVClient new];
     request = [self getRequestWithCredentials:request];
     
-    [request getActivityServer:serverPath onCommunication:sharedOCComunication success:^(NSHTTPURLResponse *response, id responseObject) {
+    [request getActivityServer:serverPath since:since limit:limit previews:previews link:link onCommunication:sharedOCComunication success:^(NSHTTPURLResponse *response, id responseObject) {
         
         NSData *responseData = (NSData*) responseObject;
         NSMutableArray *listOfActivity = [NSMutableArray new];
@@ -1868,12 +1960,12 @@
                     
                     OCActivity *activity = [OCActivity new];
                     
-                    if ([data valueForKey:@"id"] && ![[data valueForKey:@"id"] isEqual:[NSNull null]])
-                        activity.idActivity = [[data valueForKey:@"id"] integerValue];
+                    if ([data valueForKey:@"activity_id"] && ![[data valueForKey:@"activity_id"] isEqual:[NSNull null]])
+                        activity.idActivity = [[data valueForKey:@"activity_id"] integerValue];
                     
-                    if ([data valueForKey:@"date"] && ![[data valueForKey:@"date"] isEqual:[NSNull null]]) {
+                    if ([data valueForKey:@"datetime"] && ![[data valueForKey:@"datetime"] isEqual:[NSNull null]]) {
                         
-                        NSString *dateString = [data valueForKey:@"date"];
+                        NSString *dateString = [data valueForKey:@"datetime"];
                         
                         NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
                         NSLocale *enUSPOSIXLocale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
@@ -1883,21 +1975,47 @@
                         activity.date = [dateFormatter dateFromString:dateString];
                     }
                     
-                    if ([data valueForKey:@"file"] && ![[data valueForKey:@"file"] isEqual:[NSNull null]])
-                        activity.file = [data valueForKey:@"file"];
+                    if ([data valueForKey:@"app"] && ![[data valueForKey:@"app"] isEqual:[NSNull null]])
+                        activity.app = [data valueForKey:@"app"];
                     
-                    if ([data valueForKey:@"link"] && ![[data valueForKey:@"link"] isEqual:[NSNull null]])
-                        activity.link = [data valueForKey:@"link"];
+                    if ([data valueForKey:@"type"] && ![[data valueForKey:@"type"] isEqual:[NSNull null]])
+                        activity.type = [data valueForKey:@"type"];
                     
-                    if ([data valueForKey:@"message"] && ![[data valueForKey:@"message"] isEqual:[NSNull null]])
-                        activity.message = [data valueForKey:@"message"];
+                    if ([data valueForKey:@"user"] && ![[data valueForKey:@"user"] isEqual:[NSNull null]])
+                        activity.user = [data valueForKey:@"user"];
                     
                     if ([data valueForKey:@"subject"] && ![[data valueForKey:@"subject"] isEqual:[NSNull null]])
                         activity.subject = [data valueForKey:@"subject"];
                     
+                    if ([data valueForKey:@"subject_rich"] && ![[data valueForKey:@"subject_rich"] isEqual:[NSNull null]])
+                        activity.subject_rich = [data valueForKey:@"subject_rich"];
+                    
+                    if ([data valueForKey:@"message"] && ![[data valueForKey:@"message"] isEqual:[NSNull null]])
+                        activity.message = [data valueForKey:@"message"];
+                    
+                    if ([data valueForKey:@"message_rich"] && ![[data valueForKey:@"message_rich"] isEqual:[NSNull null]])
+                        activity.message_rich = [data valueForKey:@"message_rich"];
+                    
+                    if ([data valueForKey:@"icon"] && ![[data valueForKey:@"icon"] isEqual:[NSNull null]])
+                        activity.icon = [data valueForKey:@"icon"];
+                    
+                    if ([data valueForKey:@"link"] && ![[data valueForKey:@"link"] isEqual:[NSNull null]])
+                        activity.link = [data valueForKey:@"link"];
+                    
+                    if ([data valueForKey:@"object_type"] && ![[data valueForKey:@"object_type"] isEqual:[NSNull null]])
+                        activity.object_type = [data valueForKey:@"object_type"];
+                    
+                    if ([data valueForKey:@"object_id"] && ![[data valueForKey:@"object_id"] isEqual:[NSNull null]])
+                        activity.object_id = [[data valueForKey:@"object_id"] integerValue];
+                    
+                    if ([data valueForKey:@"object_name"] && ![[data valueForKey:@"object_name"] isEqual:[NSNull null]])
+                        activity.object_name = [data valueForKey:@"object_name"];
+                    
+                    if ([data valueForKey:@"previews"] && ![[data valueForKey:@"previews"] isEqual:[NSNull null]])
+                        activity.previews = [data valueForKey:@"previews"];
+                    
                     [listOfActivity addObject:activity];
                 }
-                
                 successRequest(response, listOfActivity, request.redirectedServer);
 
             } else {
@@ -2740,7 +2858,7 @@
 
 - (void)createLinkRichdocuments:(NSString *)serverPath fileID:(NSString *)fileID onCommunication:(OCCommunication *)sharedOCComunication successRequest:(void(^)(NSHTTPURLResponse *response, NSString *link, NSString *redirectedServer))successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest {
     
-    serverPath = [serverPath stringByAppendingString:k_url_create_link_mobile_editor];
+    serverPath = [serverPath stringByAppendingString:k_url_create_link_mobile_richdocuments];
     serverPath = [serverPath stringByAppendingString:@"?format=json"];
     
     OCWebDAVClient *request = [[OCWebDAVClient alloc] init];
@@ -2794,9 +2912,125 @@
     }];
 }
 
+- (void)geTemplatesRichdocuments:(NSString *)serverPath typeTemplate:(NSString *)typeTemplate onCommunication:(OCCommunication *)sharedOCComunication successRequest:(void(^)(NSHTTPURLResponse *response, NSArray *listOfTemplate, NSString *redirectedServer))successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest {
+    
+    serverPath = [serverPath stringByAppendingString:k_url_get_template_mobile_richdocuments];
+    serverPath = [serverPath stringByAppendingString:typeTemplate];
+    serverPath = [serverPath stringByAppendingString:@"?format=json"];
+    
+    OCWebDAVClient *request = [[OCWebDAVClient alloc] init];
+    request = [self getRequestWithCredentials:request];
+    
+    [request geTemplatesRichdocuments:serverPath onCommunication:sharedOCComunication success:^(NSHTTPURLResponse *operation, id response) {
+        
+        NSData *responseData = (NSData*) response;
+        
+        //Parse
+        NSError *error;
+        NSDictionary *jsongParsed = [NSJSONSerialization JSONObjectWithData:responseData options:NSJSONReadingMutableContainers error:&error];
+        NSLog(@"[LOG] Link richdocuments : %@",jsongParsed);
+        
+        if (jsongParsed && jsongParsed.allKeys > 0) {
+            
+            NSMutableArray *list = [NSMutableArray new];
+            
+            NSDictionary *ocs = [jsongParsed valueForKey:@"ocs"];
+            NSDictionary *meta = [ocs valueForKey:@"meta"];
+            NSDictionary *data = [ocs valueForKey:@"data"];
+            
+            NSInteger statusCode = [[meta valueForKey:@"statuscode"] integerValue];
+            
+            if (statusCode == kOCUserProfileAPISuccessful) {
+               
+                for (NSDictionary *dicDatas in data) {
+                    
+                    NCRichDocumentTemplate *template = [NCRichDocumentTemplate new];
+                    
+                    if ([dicDatas valueForKey:@"id"] && ![[dicDatas valueForKey:@"id"] isEqual:[NSNull null]])
+                        template.templateID = [[dicDatas valueForKey:@"id"] integerValue];
+                    
+                    if ([dicDatas valueForKey:@"delete"] && ![[dicDatas valueForKey:@"delete"] isKindOfClass:[NSNull class]])
+                        template.delete = [dicDatas valueForKey:@"delete"];
+                    
+                    if ([dicDatas valueForKey:@"extension"] && ![[dicDatas valueForKey:@"extension"] isKindOfClass:[NSNull class]])
+                        template.extension = [dicDatas valueForKey:@"extension"];
+                    
+                    if ([dicDatas valueForKey:@"name"] && ![[dicDatas valueForKey:@"name"] isKindOfClass:[NSNull class]])
+                        template.name = [dicDatas valueForKey:@"name"];
+                    
+                    if ([dicDatas valueForKey:@"preview"] && ![[dicDatas valueForKey:@"preview"] isKindOfClass:[NSNull class]])
+                        template.preview = [dicDatas valueForKey:@"preview"];
+                    
+                    if ([dicDatas valueForKey:@"type"] && ![[dicDatas valueForKey:@"type"] isKindOfClass:[NSNull class]])
+                        template.type = [dicDatas valueForKey:@"type"];
+                    
+                    [list addObject:template];
+                }
+                
+                successRequest(response, list, request.redirectedServer);
+
+            } else {
+                
+                NSString *message = (NSString *)[meta objectForKey:@"message"];
+                if ([message isKindOfClass:[NSNull class]]) {
+                    message = NSLocalizedString(@"_server_response_error_", nil);
+                }
+                failureRequest(response, [UtilsFramework getErrorWithCode:statusCode andCustomMessageFromTheServer:message], request.redirectedServer);
+            }
+            
+        } else {
+            failureRequest(response, [UtilsFramework getErrorWithCode:k_CCErrorWebdavResponseError andCustomMessageFromTheServer:NSLocalizedString(@"_server_response_error_", nil)], request.redirectedServer);
+        }
+        
+    } failure:^(NSHTTPURLResponse *response, NSData *responseData, NSError *error) {
+        
+        //Return error
+        failureRequest(response, error, request.redirectedServer);
+    }];
+}
+
+- (void)createNewRichdocuments:(NSString *)serverPath path:(NSString *)path templateID:(NSString *)templateID onCommunication:(OCCommunication *)sharedOCComunication successRequest:(void(^)(NSHTTPURLResponse *response, NSString *url, NSString *redirectedServer))successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest {
+    
+    serverPath = [serverPath stringByAppendingString:k_url_create_new_mobile_richdocuments];
+    serverPath = [serverPath stringByAppendingString:@"?format=json"];
+    
+    OCWebDAVClient *request = [[OCWebDAVClient alloc] init];
+    request = [self getRequestWithCredentials:request];
+    
+    [request createNewRichdocuments:serverPath path:path templateID:templateID onCommunication:sharedOCComunication success:^(NSHTTPURLResponse *operation, id response) {
+        
+        NSData *responseData = (NSData*) response;
+        
+        //Parse
+        NSError *error;
+        NSDictionary *jsongParsed = [NSJSONSerialization JSONObjectWithData:responseData options:NSJSONReadingMutableContainers error:&error];
+        NSLog(@"[LOG] URL Asset : %@",jsongParsed);
+        
+        NSDictionary *ocs = [jsongParsed valueForKey:@"ocs"];
+        NSDictionary *meta = [ocs valueForKey:@"meta"];
+        NSDictionary *data = [ocs valueForKey:@"data"];
+        
+        NSInteger statusCode = [[meta valueForKey:@"statuscode"] integerValue];
+        
+        if (statusCode == kOCUserProfileAPISuccessful) {            
+            if ([data valueForKey:@"url"] && ![[data valueForKey:@"url"] isKindOfClass:[NSNull class]])
+                successRequest(response, [data valueForKey:@"url"], request.redirectedServer);
+            else
+                successRequest(response, nil, request.redirectedServer);
+        } else {
+            failureRequest(response, [UtilsFramework getErrorWithCode:k_CCErrorWebdavResponseError andCustomMessageFromTheServer:NSLocalizedString(@"_server_response_error_", nil)], request.redirectedServer);
+        }
+        
+    } failure:^(NSHTTPURLResponse *response, NSData *responseData, NSError *error) {
+        
+        //Return error
+        failureRequest(response, error, request.redirectedServer);
+    }];
+}
+
 - (void)createAssetRichdocuments:(NSString *)serverPath path:(NSString *)path onCommunication:(OCCommunication *)sharedOCComunication successRequest:(void(^)(NSHTTPURLResponse *response, NSString *url, NSString *redirectedServer))successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest {
     
-    serverPath = [serverPath stringByAppendingString:k_url_insert_assets_to_collabora];
+    serverPath = [serverPath stringByAppendingString:k_url_insert_assets_to_richdocuments];
     serverPath = [serverPath stringByAppendingString:@"?format=json"];
     
     OCWebDAVClient *request = [[OCWebDAVClient alloc] init];
@@ -2835,12 +3069,14 @@
 
 #pragma mark - Trash
 
-- (void)listingTrash:(NSString *)path onCommunication:(OCCommunication *)sharedOCCommunication successRequest:(void(^)(NSHTTPURLResponse *response, NSArray *items, NSString *redirectedServer)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest
+- (void)listingTrash:(NSString *)path depth:(NSString *)depth onCommunication:(OCCommunication *)sharedOCCommunication successRequest:(void(^)(NSHTTPURLResponse *response, NSArray *items, NSString *redirectedServer)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest
 {
     OCWebDAVClient *request = [OCWebDAVClient new];
     request = [self getRequestWithCredentials:request];
     
-    [request listTrash:path onCommunication:sharedOCCommunication success:^(NSHTTPURLResponse *response, id responseObject) {
+    path = [path encodeString:NSUTF8StringEncoding];
+
+    [request listTrash:path depth:depth onCommunication:sharedOCCommunication success:^(NSHTTPURLResponse *response, id responseObject) {
         
         OCXMLParser *parser = [OCXMLParser new];
         [parser initParserWithData:responseObject];
@@ -2852,6 +3088,252 @@
         
         failureRequest(response, error, request.redirectedServer);
     }];
+}
+
+- (void)emptyTrash:(NSString *)path onCommunication:(OCCommunication *)sharedOCCommunication successRequest:(void(^)(NSHTTPURLResponse *response, NSString *redirectedServer)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest
+{
+    OCWebDAVClient *request = [OCWebDAVClient new];
+    request = [self getRequestWithCredentials:request];
+    
+    [request emptyTrash:path onCommunication:sharedOCCommunication success:^(NSHTTPURLResponse *response, id responseObject) {
+        
+        successRequest(response, request.redirectedServer);
+        
+    } failure:^(NSHTTPURLResponse *response, id responseData, NSError *error) {
+        
+        failureRequest(response, error, request.redirectedServer);
+    }];
+}
+
+#pragma mark - Third Parts
+
+- (void)getHCUserProfile:(NSString *)serverPath onCommunication:(OCCommunication *)sharedOCCommunication successRequest:(void(^)(NSHTTPURLResponse *response, OCUserProfile *userProfile, NSString *redirectedServer)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest
+{
+    serverPath = [serverPath encodeString:NSUTF8StringEncoding];
+    
+    OCWebDAVClient *request = [OCWebDAVClient new];
+    request = [self getRequestWithCredentials:request];
+    
+    [request getHCUserProfile:serverPath onCommunication:sharedOCCommunication success:^(NSHTTPURLResponse * _Nonnull operation, id  _Nonnull response) {
+        
+        NSData *responseData = (NSData*) response;
+        OCUserProfile *userProfile = [OCUserProfile new];
+        
+        //Parse
+        NSError *error;
+        NSDictionary *jsongParsed = [NSJSONSerialization JSONObjectWithData:responseData options:NSJSONReadingMutableContainers error:&error];
+        NSLog(@"[LOG] User Profile : %@",jsongParsed);
+        
+        if (jsongParsed && jsongParsed.allKeys > 0) {
+            
+            NSDictionary *ocs = [jsongParsed valueForKey:@"ocs"];
+            NSDictionary *meta = [ocs valueForKey:@"meta"];
+            NSDictionary *data = [ocs valueForKey:@"data"];
+            NSInteger statusCode = [[meta valueForKey:@"statuscode"] integerValue];
+            
+            data = [data valueForKey:@"data"];
+
+            if (statusCode == kOCUserProfileAPISuccessful) {
+                
+                if ([data valueForKey:@"address"] && ![[data valueForKey:@"address"] isKindOfClass:[NSNull class]])
+                    userProfile.address = [data valueForKey:@"address"];
+                
+                if ([data valueForKey:@"displayname"] && ![[data valueForKey:@"displayname"] isKindOfClass:[NSNull class]])
+                    userProfile.displayName = [data valueForKey:@"displayname"];
+                
+                if ([data valueForKey:@"businesssize"] && ![[data valueForKey:@"businesssize"] isKindOfClass:[NSNull class]]) {
+                    switch ([[data valueForKey:@"businesssize"] integerValue]) {
+                        case 1:
+                            userProfile.businessSize = @"1-4";
+                            break;
+                        case 5:
+                            userProfile.businessSize = @"5-9";
+                            break;
+                        case 10:
+                            userProfile.businessSize = @"10-19";
+                            break;
+                        case 20:
+                            userProfile.businessSize = @"20-49";
+                            break;
+                        case 50:
+                            userProfile.businessSize = @"50-99";
+                            break;
+                        case 100:
+                            userProfile.businessSize = @"100-249";
+                            break;
+                        case 250:
+                            userProfile.businessSize = @"250-499";
+                            break;
+                        case 500:
+                            userProfile.businessSize = @"500-999";
+                            break;
+                        case 1000:
+                            userProfile.businessSize = @"1000+";
+                            break;
+                        default:
+                            break;
+                    }
+                }
+               
+                if ([data valueForKey:@"businesstype"] && ![[data valueForKey:@"businesstype"] isKindOfClass:[NSNull class]])
+                    userProfile.businessType = [data valueForKey:@"businesstype"];
+                
+                if ([data valueForKey:@"city"] && ![[data valueForKey:@"city"] isKindOfClass:[NSNull class]])
+                    userProfile.city = [data valueForKey:@"city"];
+                
+                if ([data valueForKey:@"company"] && ![[data valueForKey:@"company"] isKindOfClass:[NSNull class]])
+                    userProfile.company = [data valueForKey:@"company"];
+                
+                if ([data valueForKey:@"country"] && ![[data valueForKey:@"country"] isKindOfClass:[NSNull class]])
+                    userProfile.country = [data valueForKey:@"country"];
+                
+                if ([data valueForKey:@"email"] && ![[data valueForKey:@"email"] isKindOfClass:[NSNull class]])
+                    userProfile.email = [data valueForKey:@"email"];
+                
+                if ([data valueForKey:@"phone"] && ![[data valueForKey:@"phone"] isKindOfClass:[NSNull class]])
+                    userProfile.phone = [data valueForKey:@"phone"];
+                
+                if ([data valueForKey:@"role"] && ![[data valueForKey:@"role"] isKindOfClass:[NSNull class]])
+                    userProfile.role = [data valueForKey:@"role"];
+                
+                if ([data valueForKey:@"twitter"] && ![[data valueForKey:@"twitter"] isKindOfClass:[NSNull class]])
+                    userProfile.twitter = [data valueForKey:@"twitter"];
+                
+                if ([data valueForKey:@"website"] && ![[data valueForKey:@"website"] isKindOfClass:[NSNull class]])
+                    userProfile.webpage = [data valueForKey:@"website"];
+                
+                if ([data valueForKey:@"zip"] && ![[data valueForKey:@"zip"] isKindOfClass:[NSNull class]])
+                    userProfile.zip = [data valueForKey:@"zip"];
+                
+                successRequest(response, userProfile, request.redirectedServer);
+                
+            } else {
+                
+                NSString *message = (NSString *)[meta objectForKey:@"message"];
+                if ([message isKindOfClass:[NSNull class]]) {
+                    message = NSLocalizedString(@"_server_response_error_", nil);
+                }
+                failureRequest(response, [UtilsFramework getErrorWithCode:statusCode andCustomMessageFromTheServer:message], request.redirectedServer);
+            }
+            
+        } else {
+            failureRequest(response, [UtilsFramework getErrorWithCode:k_CCErrorWebdavResponseError andCustomMessageFromTheServer:NSLocalizedString(@"_server_response_error_", nil)], request.redirectedServer);
+        }
+        
+    } failure:^(NSHTTPURLResponse *response, NSData *responseData, NSError *error) {
+        
+        failureRequest(response, error, request.redirectedServer);
+    }];
+    
+}
+
+- (void)putHCUserProfile:(NSString*)serverPath data:(NSString *)data onCommunication:(OCCommunication *)sharedOCComunication successRequest:(void(^)(NSHTTPURLResponse *response, NSString *redirectedServer))successRequest  failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest {
+    
+    serverPath = [serverPath encodeString:NSUTF8StringEncoding];
+
+    OCWebDAVClient *request = [[OCWebDAVClient alloc] init];
+    request = [self getRequestWithCredentials:request];
+    
+    [request putHCUserProfile:serverPath data:data onCommunication:sharedOCComunication success:^(NSHTTPURLResponse *operation, id response) {
+        
+        successRequest(response, request.redirectedServer);
+        
+    } failure:^(NSHTTPURLResponse *response, id responseObject, NSError *error) {
+        
+        failureRequest(response, error, request.redirectedServer);
+    }];
+}
+
+- (void)getHCFeatures:(NSString *)serverPath onCommunication:(OCCommunication *)sharedOCCommunication successRequest:(void(^)(NSHTTPURLResponse *response, HCFeatures *features, NSString *redirectedServer)) successRequest failureRequest:(void(^)(NSHTTPURLResponse *response, NSError *error, NSString *redirectedServer)) failureRequest
+{
+    serverPath = [serverPath encodeString:NSUTF8StringEncoding];
+    
+    OCWebDAVClient *request = [OCWebDAVClient new];
+    request = [self getRequestWithCredentials:request];
+    
+    [request getHCUserProfile:serverPath onCommunication:sharedOCCommunication success:^(NSHTTPURLResponse * _Nonnull operation, id  _Nonnull response) {
+        
+        NSData *responseData = (NSData*) response;
+        HCFeatures *features = [HCFeatures new];
+        
+        //Parse
+        NSError *error;
+        NSDictionary *jsongParsed = [NSJSONSerialization JSONObjectWithData:responseData options:NSJSONReadingMutableContainers error:&error];
+        NSLog(@"[LOG] User Profile Features : %@",jsongParsed);
+        
+        if (jsongParsed && jsongParsed.allKeys > 0) {
+            
+            NSDictionary *ocs = [jsongParsed valueForKey:@"ocs"];
+            NSDictionary *meta = [ocs valueForKey:@"meta"];
+            NSDictionary *data = [ocs valueForKey:@"data"];
+            NSInteger statusCode = [[meta valueForKey:@"statuscode"] integerValue];
+            
+            data = [data valueForKey:@"data"];
+            
+            if (statusCode == kOCUserProfileAPISuccessful) {
+                
+                if ([data valueForKey:@"is_trial"] && ![[data valueForKey:@"is_trial"] isKindOfClass:[NSNull class]])
+                    features.isTrial = [[data valueForKey:@"is_trial"] boolValue];
+                
+                if ([data valueForKey:@"trial_expired"] && ![[data valueForKey:@"trial_expired"] isKindOfClass:[NSNull class]])
+                    features.trialExpired = [[data valueForKey:@"trial_expired"] boolValue];
+                
+                if ([data valueForKey:@"trial_remaining_sec"] && ![[data valueForKey:@"trial_remaining_sec"] isKindOfClass:[NSNull class]])
+                    features.trialRemainingSec = [[data valueForKey:@"trial_remaining_sec"] integerValue];
+                
+                if ([data valueForKey:@"trial_end_time"] && ![[data valueForKey:@"trial_end_time"] isKindOfClass:[NSNull class]])
+                    features.trialEndTime = [[data valueForKey:@"trial_end_time"] integerValue];
+                
+                if ([data valueForKey:@"trial_end"] && ![[data valueForKey:@"trial_end"] isKindOfClass:[NSNull class]])
+                    features.trialEnd = [data valueForKey:@"trial_end"];
+                
+                if ([data valueForKey:@"account_remove_expired"] && ![[data valueForKey:@"account_remove_expired"] isKindOfClass:[NSNull class]])
+                    features.accountRemoveExpired = [[data valueForKey:@"account_remove_expired"] boolValue];
+                
+                if ([data valueForKey:@"account_remove_remaining_sec"] && ![[data valueForKey:@"account_remove_remaining_sec"] isKindOfClass:[NSNull class]])
+                    features.accountRemoveRemainingSec = [[data valueForKey:@"account_remove_remaining_sec"] integerValue];
+                
+                if ([data valueForKey:@"account_remove_time"] && ![[data valueForKey:@"account_remove_time"] isKindOfClass:[NSNull class]])
+                    features.accountRemoveTime = [[data valueForKey:@"account_remove_time"] integerValue];
+                
+                if ([data valueForKey:@"account_remove"] && ![[data valueForKey:@"account_remove"] isKindOfClass:[NSNull class]])
+                    features.accountRemove = [data valueForKey:@"account_remove"];
+                
+                NSDictionary *nextGroupExpirationDic = [data valueForKey:@"next_group_expiration"];
+                if (nextGroupExpirationDic) {
+                    if ([nextGroupExpirationDic valueForKey:@"group"] && ![[nextGroupExpirationDic valueForKey:@"group"] isKindOfClass:[NSNull class]])
+                        features.nextGroupExpirationGroup = [nextGroupExpirationDic valueForKey:@"group"];
+                    
+                    if ([nextGroupExpirationDic valueForKey:@"group_expired"] && ![[nextGroupExpirationDic valueForKey:@"group_expired"] isKindOfClass:[NSNull class]])
+                        features.nextGroupExpirationGroupExpired = [[nextGroupExpirationDic valueForKey:@"group_expired"] boolValue];
+                    
+                    if ([nextGroupExpirationDic valueForKey:@"expires_time"] && ![[nextGroupExpirationDic valueForKey:@"expires_time"] isKindOfClass:[NSNull class]])
+                        features.nextGroupExpirationExpiresTime = [[nextGroupExpirationDic valueForKey:@"expires_time"] integerValue];
+                    
+                    if ([nextGroupExpirationDic valueForKey:@"expires"] && ![[nextGroupExpirationDic valueForKey:@"expires"] isKindOfClass:[NSNull class]])
+                        features.nextGroupExpirationExpires = [nextGroupExpirationDic valueForKey:@"expires"];
+                }
+                
+                successRequest(response, features, request.redirectedServer);
+                
+            } else {
+                
+                NSString *message = (NSString *)[meta objectForKey:@"message"];
+                if ([message isKindOfClass:[NSNull class]]) {
+                    message = NSLocalizedString(@"_server_response_error_", nil);
+                }
+                failureRequest(response, [UtilsFramework getErrorWithCode:statusCode andCustomMessageFromTheServer:message], request.redirectedServer);
+            }
+            
+        } else {
+            failureRequest(response, [UtilsFramework getErrorWithCode:k_CCErrorWebdavResponseError andCustomMessageFromTheServer:NSLocalizedString(@"_server_response_error_", nil)], request.redirectedServer);
+        }
+        
+    } failure:^(NSHTTPURLResponse *response, NSData *responseData, NSError *error) {
+        
+        failureRequest(response, error, request.redirectedServer);
+    }];
+    
 }
 
 #pragma mark - Manage Mobile Editor OCS API

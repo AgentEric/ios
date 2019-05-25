@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 04/09/14.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -22,9 +22,8 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <DZNEmptyDataSet/UIScrollView+EmptyDataSet.h>
 
-#import "TWMessageBarManager.h"
-#import "UIScrollView+EmptyDataSet.h"
 #import "CCBKPasscode.h"
 #import "CCUtility.h"
 #import "OCNetworking.h"
@@ -37,7 +36,6 @@
 @interface CCMove : UITableViewController <UIAlertViewDelegate, UITableViewDelegate, BKPasscodeViewControllerDelegate, DZNEmptyDataSetSource, DZNEmptyDataSetDelegate>
 
 @property (nonatomic, weak) id <CCMoveDelegate> delegate;
-@property (nonatomic, strong) NSOperationQueue *networkingOperationQueue;
 
 @property BOOL includeDirectoryE2EEncryption;
 @property BOOL includeImages;

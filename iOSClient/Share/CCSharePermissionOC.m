@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 07/03/16.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -180,7 +180,7 @@
         permission = [UtilsFramework getPermissionsValueByCanEdit:[rowEdit.value boolValue] andCanCreate:[rowCreate.value boolValue] andCanChange:[rowChange.value boolValue] andCanDelete:[rowDelete.value boolValue] andCanShare:[rowShare.value boolValue] andIsFolder:shareDto.isDirectory];
     
     if (permission != shareDto.permissions)
-        [self.delegate updateShare:self.idRemoteShared metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:nil permission:permission];
+        [self.delegate updateShare:self.idRemoteShared metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:nil permission:permission hideDownload:false];
     
     [self dismissViewControllerAnimated:YES completion:nil];
 }

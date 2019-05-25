@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 04/09/14.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 
 #import <Foundation/Foundation.h>
 #import <UserNotifications/UserNotifications.h>
+#import <PushKit/PushKit.h>
 
 #import "BKPasscodeLockScreenManager.h"
 #import "REMenu.h"
@@ -30,23 +31,22 @@
 #import "TWMessageBarManager.h"
 #import "CCBKPasscode.h"
 #import "CCUtility.h"
-#import "CCActivity.h"
 #import "CCDetail.h"
-#import "CCQuickActions.h"
 #import "CCMain.h"
-#import "CCMedia.h"
 #import "CCSettings.h"
 #import "CCFavorites.h"
 #import "CCTransfers.h"
 
 @class CCLoginWeb;
 @class CCMore;
+@class NCMedia;
 
-@interface AppDelegate : UIResponder <UIApplicationDelegate, BKPasscodeLockScreenManagerDelegate, BKPasscodeViewControllerDelegate, TWMessageBarStyleSheet, CCNetworkingDelegate>
+@interface AppDelegate : UIResponder <UIApplicationDelegate, BKPasscodeLockScreenManagerDelegate, BKPasscodeViewControllerDelegate, TWMessageBarStyleSheet, CCNetworkingDelegate, PKPushRegistryDelegate>
 
 // Timer Process
 @property (nonatomic, strong) NSTimer *timerProcessAutoDownloadUpload;
 @property (nonatomic, strong) NSTimer *timerUpdateApplicationIconBadgeNumber;
+@property (nonatomic, strong) NSTimer *timerErrorNetworking;
 
 // For LMMediaPlayerView
 @property (strong, nonatomic) UIWindow *window;
@@ -66,9 +66,6 @@
 // Notification
 @property (nonatomic, strong) NSMutableArray<OCCommunication *> *listOfNotifications;
 
-// Network Operation
-@property (nonatomic, strong) NSOperationQueue *netQueue;
-
 // Networking 
 @property (nonatomic, copy) void (^backgroundSessionCompletionHandler)(void);
 
@@ -86,6 +83,9 @@
 // Audio Video
 @property (nonatomic, strong) AVPlayer *player;
 @property (nonatomic, strong) AVPlayerViewController *playerController;
+
+// Push Norification Token
+@property (nonatomic, strong) NSString *pushKitToken;
 
 // Remenu
 @property (nonatomic, strong) REMenu *reMainMenu;
@@ -117,10 +117,9 @@
 @property (nonatomic, strong) CCMain *activeMain;
 @property (nonatomic, strong) CCMain *homeMain;
 @property (nonatomic, strong) CCFavorites *activeFavorites;
-@property (nonatomic, strong) CCMedia *activeMedia;
+@property (nonatomic, strong) NCMedia *activeMedia;
 @property (nonatomic, retain) CCDetail *activeDetail;
 @property (nonatomic, retain) CCSettings *activeSettings;
-@property (nonatomic, retain) CCActivity *activeActivity;
 @property (nonatomic, retain) CCTransfers *activeTransfers;
 @property (nonatomic, retain) CCLogin *activeLogin;
 @property (nonatomic, retain) CCLoginWeb *activeLoginWeb;
@@ -131,9 +130,7 @@
 
 @property (nonatomic, strong) NSMutableArray *filterFileID;
 
-@property (nonatomic, strong) NSString *pnDeviceIdentifier;
-@property (nonatomic, strong) NSString *pnDeviceIdentifierSignature;
-@property (nonatomic, strong) NSString *pnPublicKey;
+@property (nonatomic, strong) NSMutableArray *sessionPendingStatusInUpload;
 
 // Maintenance Mode
 @property BOOL maintenanceMode;
@@ -141,8 +138,11 @@
 // UserDefaults
 @property (nonatomic, strong) NSUserDefaults *ncUserDefaults;
 
+// Timer Error Networking
+- (void)startTimerErrorNetworking;
+
 // Login View
-- (void)openLoginView:(id)delegate loginType:(NSInteger)loginType selector:(NSInteger)selector;
+- (void)openLoginView:(UIViewController *)viewController delegate:(id)delegate loginType:(NSInteger)loginType selector:(NSInteger)selector;
 
 // Setting Active Account
 - (void)settingActiveAccount:(NSString *)activeAccount activeUrl:(NSString *)activeUrl activeUser:(NSString *)activeUser activeUserID:(NSString *)activeUserID activePassword:(NSString *)activePassword;
@@ -164,16 +164,16 @@
 - (NSString *)getTabBarControllerActiveServerUrl;
 
 // Push Notification
-- (void)subscribingNextcloudServerPushNotification;
-- (void)unsubscribingNextcloudServerPushNotification;
+- (void)pushNotification;
+- (void)unsubscribingNextcloudServerPushNotification:(NSString *)account url:(NSString *)url withSubscribing:(BOOL)subscribing;
 
 // Theming Color
 - (void)settingThemingColorBrand;
 - (void)changeTheming:(UIViewController *)vc;
 
 // Task Networking
-- (void)addNetworkingOperationQueue:(NSOperationQueue *)netQueue delegate:(id)delegate metadataNet:(CCMetadataNet *)metadataNet;
 - (void)loadAutoDownloadUpload;
+- (void)startLoadAutoDownloadUpload;
 
 // Maintenance Mode
 - (void)maintenanceMode:(BOOL)mode;

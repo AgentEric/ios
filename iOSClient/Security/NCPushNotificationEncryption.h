@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 25/07/18.
 //  Copyright © 2018 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -27,11 +27,8 @@
 
 @interface NCPushNotificationEncryption : NSObject
 
-@property (nonatomic, copy) NSData *ncPNPublicKey;
-@property (nonatomic, copy) NSData *ncPNPrivateKey;
-
 + (NCPushNotificationEncryption *)sharedInstance;
-- (BOOL)generatePushNotificationsKeyPair;
+- (BOOL)generatePushNotificationsKeyPair:(NSString *)account;
 - (NSString *)decryptPushNotification:(NSString *)message withDevicePrivateKey:(NSData *)privateKey;
 
 @end

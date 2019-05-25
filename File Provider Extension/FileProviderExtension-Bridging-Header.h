@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 24/05/17.
 //  Copyright © 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -29,9 +29,9 @@
 #import "CCBKPasscode.h"
 #import "CCUtility.h"
 #import "NCEndToEndEncryption.h"
-
 #import "OCActivity.h"
 #import "OCUserProfile.h"
 #import "OCCapabilities.h"
 #import "OCExternalSites.h"
 #import "OCSharedDto.h"
+#import "HCFeatures.h"

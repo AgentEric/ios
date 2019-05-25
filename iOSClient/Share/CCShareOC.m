@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 13/11/15.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 @interface CCShareOC ()
 {
     AppDelegate *appDelegate;
+    tableCapabilities *capabilities;
 }
 @end
 
@@ -72,7 +73,14 @@
     row = [XLFormRowDescriptor formRowDescriptorWithTag:@"password" rowType:XLFormRowDescriptorTypePassword title:NSLocalizedString(@"_password_", nil)];
     [row.cellConfig setObject:[UIFont systemFontOfSize:15.0]forKey:@"textLabel.font"];
     [section addFormRow:row];
-    
+ 
+    capabilities = [[NCManageDatabase sharedInstance] getCapabilitesWithAccount:appDelegate.activeAccount];
+    if (capabilities != nil && capabilities.versionMajor >= k_nextcloud_version_15_0) {
+        row = [XLFormRowDescriptor formRowDescriptorWithTag:@"hideDownload" rowType:XLFormRowDescriptorTypeBooleanSwitch title:NSLocalizedString(@"_share_link_hide_download_", nil)];
+        [row.cellConfig setObject:[UIFont systemFontOfSize:15.0]forKey:@"textLabel.font"];
+        [section addFormRow:row];
+    }
+        
     // Expiration date
     
     section = [XLFormSectionDescriptor formSection];
@@ -180,6 +188,7 @@
     XLFormRowDescriptor *rowShareLinkSwitch = [self.form formRowWithTag:@"shareLinkSwitch"];
     XLFormRowDescriptor *rowShareLinkPermission = [self.form formRowWithTag:@"shareLinkPermission"];
     XLFormRowDescriptor *rowPassword = [self.form formRowWithTag:@"password"];
+    XLFormRowDescriptor *rowHideDownload = [self.form formRowWithTag:@"hideDownload"];
     
     XLFormRowDescriptor *rowExpirationDate = [self.form formRowWithTag:@"expirationDate"];
     XLFormRowDescriptor *rowExpirationDateSwitch = [self.form formRowWithTag:@"expirationDateSwitch"];
@@ -193,6 +202,7 @@
         
         rowShareLinkPermission.disabled = @NO;
         rowPassword.disabled = @NO;
+        rowHideDownload.disabled = @NO;
         rowExpirationDate.disabled = @NO;
         rowExpirationDateSwitch.disabled = @NO;
         
@@ -204,6 +214,7 @@
         
         rowShareLinkPermission.disabled = @YES;
         rowPassword.disabled = @YES;
+        rowHideDownload.disabled = @YES;
         rowExpirationDate.disabled = @YES;
         rowExpirationDateSwitch.disabled = @YES;
         
@@ -243,6 +254,10 @@
     else
         rowPassword.value = @"";
     
+    // Hide Download
+    if (self.itemShareLink.hideDownload) rowHideDownload.value = @1;
+    else rowHideDownload.value = @0;
+    
     // Expiration Date
     if (self.itemShareLink.expirationDate) {
         
@@ -280,7 +295,12 @@
                 
             if (item.shareType == shareTypeGroup) row.title = [item.shareWithDisplayName stringByAppendingString:NSLocalizedString(@"_user_is_group_", nil)];
             else row.title = item.shareWithDisplayName;
-                
+            
+            //If the initiator or the recipient is not the current user, show the list of sharees without any options to edit it.
+            if (![item.uidOwner isEqualToString:appDelegate.activeUserID]) {
+                row.disabled = @YES;
+            }
+            
             [section addFormRow:row];
                 
             // add users
@@ -359,7 +379,6 @@
     self.sharePermissionOC.metadata = self.metadata;
     self.sharePermissionOC.serverUrl = self.serverUrl;
     
-    
     [self.sharePermissionOC setModalPresentationStyle:UIModalPresentationFormSheet];
     [self presentViewController:self.sharePermissionOC animated:YES completion:NULL];
 }
@@ -374,8 +393,36 @@
         
         if ([[rowDescriptor.value valueData] boolValue] == YES) {
             
-            [self.delegate share:self.metadata serverUrl:self.serverUrl password:@"" permission:1];
-            [self disableForm];
+            if (capabilities.isFilesSharingPublicPasswordEnforced == YES) {
+                
+                __weak __typeof(UIAlertController) *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"_enforce_password_protection_",nil) message:nil preferredStyle:UIAlertControllerStyleAlert];
+                [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+                    textField.secureTextEntry = true;
+                    [textField addTarget:self action:@selector(minCharTextFieldDidChange:) forControlEvents:UIControlEventEditingChanged];
+                }];
+                UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"_cancel_",nil) style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+                    [self reloadData];
+                }];
+                UIAlertAction *okAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"_ok_", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                    NSString *password = alertController.textFields.firstObject.text;
+                    XLFormRowDescriptor *rowPassword = [self.form formRowWithTag:@"password"];
+                    rowPassword.value = password;
+                    [self.delegate share:self.metadata serverUrl:self.serverUrl password:password permission:1 hideDownload:false];
+                    [self disableForm];
+                }];
+                
+                okAction.enabled = NO;
+                
+                [alertController addAction:cancelAction];
+                [alertController addAction:okAction];
+                
+                [self presentViewController:alertController animated:YES completion:nil];
+                
+            } else {
+                
+                [self.delegate share:self.metadata serverUrl:self.serverUrl password:@"" permission:1 hideDownload:false];
+                [self disableForm];
+            }
             
         } else {
             
@@ -387,7 +434,15 @@
     
     if ([rowDescriptor.tag isEqualToString:@"shareLinkPermission"]) {
         
-        [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:nil permission:[self getShareLinkPermission:newValue]];
+        [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:nil permission:[self getShareLinkPermission:newValue] hideDownload:false];
+        [self disableForm];
+    }
+    
+    if ([rowDescriptor.tag isEqualToString:@"hideDownload"]) {
+        
+        BOOL hideDownload = [newValue boolValue];
+        
+        [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:nil permission:0 hideDownload:hideDownload];
         [self disableForm];
     }
     
@@ -396,7 +451,7 @@
         // remove expiration date
         if ([[rowDescriptor.value valueData] boolValue] == NO) {
             
-            [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:@"" permission:0];
+            [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:@"" permission:0 hideDownload:false];
             [self disableForm];
             
         } else {
@@ -405,7 +460,7 @@
             XLFormRowDescriptor *rowExpirationDate = [self.form formRowWithTag:@"expirationDate"];
             NSString *expirationDate = [self convertDateInServerFormat:rowExpirationDate.value];
             
-            [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:expirationDate permission:0];
+            [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:expirationDate permission:0 hideDownload:false];
             [self disableForm];
         }
     }
@@ -447,7 +502,7 @@
         
             NSString *expirationDate = [self convertDateInServerFormat:rowDescriptor.value];
         
-            [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:expirationDate permission:0];
+            [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:nil expirationTime:expirationDate permission:0 hideDownload:false];
             [self disableForm];
         }
         
@@ -458,20 +513,30 @@
         
         NSString *password = rowDescriptor.value;
         
-        // if the password is not changed or is 0 lenght
-        if ([[self.itemShareLink shareWith] isEqualToString:password]) {
+        // Public Password Enforced Test
+        if (capabilities.isFilesSharingPublicPasswordEnforced == YES && password == nil) {
             
+            [appDelegate messageNotification:@"_share_link_" description:@"_password_obligatory_" visible:YES delay:k_dismissAfterSecond type:TWMessageBarMessageTypeError errorCode:k_CCErrorInternalError];
+
             [self reloadData];
             
         } else {
-            
-            if (password == nil)
-                password = @"";
-            
-            if (self.shareLink) {
+        
+            // if the password is not changed or is 0 lenght
+            if ([[self.itemShareLink shareWith] isEqualToString:password]) {
                 
-                [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:password expirationTime:nil permission:0];
-                [self disableForm];
+                [self reloadData];
+                
+            } else {
+                
+                if (password == nil)
+                    password = @"";
+                
+                if (self.shareLink) {
+                    
+                    [self.delegate updateShare:self.shareLink metadata:self.metadata serverUrl:self.serverUrl password:password expirationTime:nil permission:0 hideDownload:false];
+                    [self disableForm];
+                }
             }
         }
     }
@@ -486,7 +551,7 @@
     [self.tableView endEditing:YES];
     
     // reload delegate
-    [[NCMainCommon sharedInstance] reloadDatasourceWithServerUrl:[[NCManageDatabase sharedInstance] getServerUrl:self.metadata.directoryID] fileID:self.metadata.fileID action:k_action_MOD];
+    [[NCMainCommon sharedInstance] reloadDatasourceWithServerUrl:self.metadata.serverUrl fileID:self.metadata.fileID action:k_action_MOD];
     
     [self dismissViewControllerAnimated:YES completion:nil];
 }
@@ -508,17 +573,28 @@
 
 - (void)shareUserAndGroup:(NSString *)user shareeType:(NSInteger)shareeType permission:(NSInteger)permission
 {
-    [self.delegate shareUserAndGroup:user shareeType:shareeType permission:permission metadata:self.metadata directoryID:self.metadata.directoryID serverUrl:self.serverUrl];
+    [self.delegate shareUserAndGroup:user shareeType:shareeType permission:permission metadata:self.metadata serverUrl:self.serverUrl];
 }
 
-- (void)updateShare:(NSString *)share metadata:(tableMetadata *)metadata serverUrl:(NSString *)serverUrl password:(NSString *)password expirationTime:(NSString *)expirationTime permission:(NSInteger)permission
+- (void)updateShare:(NSString *)share metadata:(tableMetadata *)metadata serverUrl:(NSString *)serverUrl password:(NSString *)password expirationTime:(NSString *)expirationTime permission:(NSInteger)permission hideDownload:(BOOL)hideDownload
 {
-    [self.delegate updateShare:share metadata:metadata serverUrl:serverUrl password:password expirationTime:expirationTime permission:permission];
+    [self.delegate updateShare:share metadata:metadata serverUrl:serverUrl password:password expirationTime:expirationTime permission:permission hideDownload:false];
 }
 
 #pragma --------------------------------------------------------------------------------------------
 #pragma mark ===== Utility =====
 #pragma --------------------------------------------------------------------------------------------
+
+- (void)minCharTextFieldDidChange:(UITextField *)sender
+{
+    UIAlertController *alertController = (UIAlertController *)self.presentedViewController;
+    
+    if (alertController) {
+        UITextField *password = alertController.textFields.firstObject;
+        UIAlertAction *okAction = alertController.actions.lastObject;
+        okAction.enabled = password.text.length >= 8;
+    }
+}
 
 -(void)disableForm
 {

@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 27/05/18.
 //  Copyright © 2018 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -75,16 +75,14 @@ class FileProviderData: NSObject {
                 account = activeAccount.account
                 accountUser = activeAccount.user
                 accountUserID = activeAccount.userID
-                accountPassword = activeAccount.password
+                accountPassword = CCUtility.getPassword(activeAccount.account)
                 accountUrl = activeAccount.url
                 homeServerUrl = CCUtility.getHomeServerUrlActiveUrl(activeAccount.url)
             }
         } else if account != activeAccount.account {
             assert(false, "change user")
         }
-        
-        CCNetworking.shared().settingAccount()
-        
+                
         return true
     }
     
@@ -120,7 +118,7 @@ class FileProviderData: NSObject {
     
     func getParentItemIdentifier(metadata: tableMetadata) -> NSFileProviderItemIdentifier? {
         
-        if let directory = NCManageDatabase.sharedInstance.getTableDirectory(predicate: NSPredicate(format: "directoryID == %@", metadata.directoryID))  {
+        if let directory = NCManageDatabase.sharedInstance.getTableDirectory(predicate: NSPredicate(format: "account == %@ AND serverUrl == %@", metadata.account, metadata.serverUrl))  {
             if directory.serverUrl == homeServerUrl {
                 return NSFileProviderItemIdentifier(NSFileProviderItemIdentifier.rootContainer.rawValue)
             } else {
@@ -164,7 +162,7 @@ class FileProviderData: NSObject {
         
         var updateWorkingSet = false
         let oldListFavoriteIdentifierRank = listFavoriteIdentifierRank
-        listFavoriteIdentifierRank = NCManageDatabase.sharedInstance.getTableMetadatasDirectoryFavoriteIdentifierRank()
+        listFavoriteIdentifierRank = NCManageDatabase.sharedInstance.getTableMetadatasDirectoryFavoriteIdentifierRank(account: account)
         
         // (ADD)
         for (identifier, _) in listFavoriteIdentifierRank {

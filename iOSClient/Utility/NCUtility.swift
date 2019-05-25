@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 25/06/18.
 //  Copyright © 2018 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 //
 
 import Foundation
+import SVGKit
 
 class NCUtility: NSObject {
 
@@ -30,14 +31,16 @@ class NCUtility: NSObject {
         return instance
     }()
     
-    @objc func createFileName(_ fileName: String, directoryID: String) -> String {
+    let activityIndicator = UIActivityIndicatorView(style: .whiteLarge)
+    
+    @objc func createFileName(_ fileName: String, serverUrl: String, account: String) -> String {
         
         var resultFileName = fileName
         var exitLoop = false
             
             while exitLoop == false {
                 
-                if NCManageDatabase.sharedInstance.getMetadata(predicate: NSPredicate(format: "fileNameView == %@ AND directoryID == %@", resultFileName, directoryID)) != nil {
+                if NCManageDatabase.sharedInstance.getMetadata(predicate: NSPredicate(format: "fileNameView == %@ AND serverUrl == %@ AND account == %@", resultFileName, serverUrl, account)) != nil {
                     
                     var name = NSString(string: resultFileName).deletingPathExtension
                     let ext = NSString(string: resultFileName).pathExtension
@@ -116,4 +119,209 @@ class NCUtility: NSObject {
         
         return fileID as String
     }
+    
+    @objc func resizeImage(image: UIImage, newWidth: CGFloat) -> UIImage {
+        
+        let scale = newWidth / image.size.width
+        let newHeight = image.size.height * scale
+        UIGraphicsBeginImageContext(CGSize(width: newWidth, height: newHeight))
+        image.draw(in: (CGRect(x: 0, y: 0, width: newWidth, height: newHeight)))
+        let newImage = UIGraphicsGetImageFromCurrentImageContext()!
+        UIGraphicsEndImageContext()
+        
+        return newImage
+    }
+    
+    func cellBlurEffect(with frame: CGRect) -> UIView {
+        
+        let blurEffect = UIBlurEffect(style: .extraLight)
+        let blurEffectView = UIVisualEffectView(effect: blurEffect)
+        
+        blurEffectView.frame = frame
+        blurEffectView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        blurEffectView.backgroundColor = NCBrandColor.sharedInstance.brand.withAlphaComponent(0.2)
+        
+        return blurEffectView
+    }
+    
+    func setLayoutForView(key: String, layout: String, sort: String, ascending: Bool, groupBy: String, directoryOnTop: Bool) {
+        
+        let string =  layout + "|" + sort + "|" + "\(ascending)" + "|" + groupBy + "|" + "\(directoryOnTop)"
+        
+        UICKeyChainStore.setString(string, forKey: key, service: k_serviceShareKeyChain)
+    }
+    
+    func getLayoutForView(key: String) -> (String, String, Bool, String, Bool) {
+        
+        guard let string = UICKeyChainStore.string(forKey: key, service: k_serviceShareKeyChain) else {
+            return (k_layout_list, "fileName", true, "none", true)
+        }
+
+        let array = string.components(separatedBy: "|")
+        if array.count == 5 {
+            let sort = NSString(string: array[2])
+            let directoryOnTop = NSString(string: array[4])
+
+            return (array[0], array[1], sort.boolValue, array[3], directoryOnTop.boolValue)
+        }
+        
+        return (k_layout_list, "fileName", true, "none", true)
+    }
+    
+    
+    func convertSVGtoPNGWriteToUserData(svgUrlString: String, fileName: String?, width: CGFloat?, rewrite: Bool, closure: @escaping (String?) -> ()) {
+        
+        var fileNamePNG = ""
+        
+        guard let svgUrlString = svgUrlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            return closure(nil)
+        }
+        guard let iconURL = URL(string: svgUrlString) else {
+            return closure(nil)
+        }
+        
+        if fileName == nil {
+            fileNamePNG = iconURL.deletingPathExtension().lastPathComponent + ".png"
+        } else {
+            fileNamePNG = fileName!
+        }
+        
+        let imageNamePath = CCUtility.getDirectoryUserData() + "/" + fileNamePNG
+        
+        if !FileManager.default.fileExists(atPath: imageNamePath) || rewrite == true {
+            
+            OCNetworking.sharedManager()?.downloadContents(ofUrl: iconURL.absoluteString, completion: { (data, message, errorCode) in
+                
+                if errorCode == 0 && data != nil {
+                
+                    if let image = UIImage.init(data: data!) {
+                        
+                        var newImage: UIImage = image
+                        
+                        if width != nil {
+                            
+                            let ratio = image.size.height / image.size.width
+                            let newSize = CGSize(width: width!, height: width! * ratio)
+                            
+                            let renderFormat = UIGraphicsImageRendererFormat.default()
+                            renderFormat.opaque = false
+                            let renderer = UIGraphicsImageRenderer(size: CGSize(width: newSize.width, height: newSize.height), format: renderFormat)
+                            newImage = renderer.image {
+                                (context) in
+                                image.draw(in: CGRect(x: 0, y: 0, width: newSize.width, height: newSize.height))
+                            }
+                        }
+                        
+                        guard let pngImageData = newImage.pngData() else {
+                            return closure(nil)
+                        }
+                        
+                        CCUtility.write(pngImageData, fileNamePath: imageNamePath)
+                        
+                        return closure(imageNamePath)
+                        
+                    } else {
+                        
+                        guard let svgImage: SVGKImage = SVGKImage(data: data) else {
+                            return closure(nil)
+                        }
+                            
+                        if width != nil {
+                            let scale = svgImage.size.height / svgImage.size.width
+                            svgImage.size = CGSize(width: width!, height: width! * scale)
+                        }
+                            
+                        guard let image: UIImage = svgImage.uiImage else {
+                            return closure(nil)
+                        }
+                        guard let pngImageData = image.pngData() else {
+                            return closure(nil)
+                        }
+                            
+                        CCUtility.write(pngImageData, fileNamePath: imageNamePath)
+                            
+                        return closure(imageNamePath)
+                    }
+                } else {
+                    return closure(nil)
+                }
+            })
+            
+        } else {
+            return closure(imageNamePath)
+        }
+    }
+    
+    @objc func startActivityIndicator(view: UIView, bottom: CGFloat) {
+    
+        activityIndicator.color = NCBrandColor.sharedInstance.brand
+        activityIndicator.hidesWhenStopped = true
+            
+        view.addSubview(activityIndicator)
+            
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+            
+        let horizontalConstraint = NSLayoutConstraint(item: activityIndicator, attribute: NSLayoutConstraint.Attribute.centerX, relatedBy: NSLayoutConstraint.Relation.equal, toItem: view, attribute: NSLayoutConstraint.Attribute.centerX, multiplier: 1, constant: 0)
+        view.addConstraint(horizontalConstraint)
+        
+        var verticalConstant: CGFloat = 0
+        if bottom > 0 {
+            verticalConstant = (view.frame.size.height / 2) - bottom
+        }
+        
+        let verticalConstraint = NSLayoutConstraint(item: activityIndicator, attribute: NSLayoutConstraint.Attribute.centerY, relatedBy: NSLayoutConstraint.Relation.equal, toItem: view, attribute: NSLayoutConstraint.Attribute.centerY, multiplier: 1, constant: verticalConstant)
+        view.addConstraint(verticalConstraint)
+
+        activityIndicator.startAnimating()
+    }
+    
+    @objc func stopActivityIndicator() {
+        activityIndicator.stopAnimating()
+        activityIndicator.removeFromSuperview()
+    }
+    
+    @objc func isSimulatorOrTestFlight() -> Bool {
+        guard let path = Bundle.main.appStoreReceiptURL?.path else {
+            return false
+        }
+        return path.contains("CoreSimulator") || path.contains("sandboxReceipt")
+    }
+    
+    @objc func isEditImage(_ fileName: NSString) -> String? {
+        switch fileName.pathExtension.uppercased() {
+        case "PNG":
+            return "PNG";
+        case "JPG":
+            return "JPG";
+        case "JPEG":
+            return "JPG"
+        default:
+            return nil
+        }
+    }
+    
+    @objc func formatSecondsToString(_ seconds: TimeInterval) -> String {
+        if seconds.isNaN {
+            return "00:00:00"
+        }
+        let sec = Int(seconds.truncatingRemainder(dividingBy: 60))
+        let min = Int(seconds.truncatingRemainder(dividingBy: 3600) / 60)
+        let hour = Int(seconds / 3600)
+        return String(format: "%02d:%02d:%02d", hour, min, sec)
+    }
+    
+    @objc func blink(cell: AnyObject?) {
+        if let cell = cell as? UITableViewCell {
+            cell.backgroundColor = NCBrandColor.sharedInstance.brand.withAlphaComponent(0.3)
+            UIView.animate(withDuration: 2) {
+                cell.backgroundColor = .clear
+            }
+        } else if let cell = cell as? UICollectionViewCell {
+            cell.backgroundColor = NCBrandColor.sharedInstance.brand.withAlphaComponent(0.3)
+            UIView.animate(withDuration: 2) {
+                cell.backgroundColor = .clear
+            }
+        }
+    }
 }
+

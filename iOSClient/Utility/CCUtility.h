@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 02/02/16.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -39,21 +39,10 @@
 
 // ===== KeyChainStore =====
 
-// ADMIN
-
-+ (void)adminRemoveIntro;
-+ (void)adminRemovePasscode;
-+ (void)adminRemoveVersion;
-
 // GET/SET
 
 + (void)deleteAllChainStore;
 + (void)storeAllChainInService;
-
-+ (NSString *)getUUID;
-
-+ (NSString *)getKeyChainPasscodeForUUID:(NSString *)uuid;
-+ (void)setKeyChainPasscodeForUUID:(NSString *)uuid conPasscode:(NSString *)passcode;
 
 + (NSString *)getVersion;
 + (NSString *)setVersion;
@@ -145,17 +134,40 @@
 + (BOOL)getDisableFilesApp;
 + (void)setDisableFilesApp:(BOOL)disable;
 
-+ (void)setPushNotificationPublicKey:(NSData *)data;
-+ (NSData *)getPushNotificationPublicKey;
-+ (void)setPushNotificationPrivateKey:(NSData *)data;
-+ (NSData *)getPushNotificationPrivateKey;
-+ (void)setPushNotificationToken:(NSString *)token;
-+ (NSString *)getPushNotificationToken;
++ (void)setPushNotificationPublicKey:(NSString *)account data:(NSData *)data;
++ (NSData *)getPushNotificationPublicKey:(NSString *)account;
++ (void)setPushNotificationSubscribingPublicKey:(NSString *)account publicKey:(NSString *)publicKey;
++ (NSString *)getPushNotificationSubscribingPublicKey:(NSString *)account;
++ (void)setPushNotificationPrivateKey:(NSString *)account data:(NSData *)data;
++ (NSData *)getPushNotificationPrivateKey:(NSString *)account;
++ (void)setPushNotificationToken:(NSString *)account token:(NSString *)token;
++ (NSString *)getPushNotificationToken:(NSString *)account;
++ (void)setPushNotificationDeviceIdentifier:(NSString *)account deviceIdentifier:(NSString *)deviceIdentifier;
++ (NSString *)getPushNotificationDeviceIdentifier:(NSString *)account;
++ (void)setPushNotificationDeviceIdentifierSignature:(NSString *)account deviceIdentifierSignature:(NSString *)deviceIdentifierSignature;
++ (NSString *)getPushNotificationDeviceIdentifierSignature:(NSString *)account;
++ (void)clearAllKeysPushNotification:(NSString *)account;
 
-+ (NSString *)getLayoutTrash;
-+ (void)setLayoutTrash:(NSString *)layout;
++ (NSInteger)getMediaWidthImage;
++ (void)setMediaWidthImage:(NSInteger)width;
+
++ (BOOL)getDisableCrashservice;
++ (void)setDisableCrashservice:(BOOL)disable;
+
++ (void)setPassword:(NSString *)account password:(NSString *)password;
++ (NSString *)getPassword:(NSString *)account;
+
++ (void)setHCBusinessType:(NSString *)professions;
++ (NSString *)getHCBusinessType;
+
++ (NSData *)getDatabaseEncryptionKey;
+
++ (BOOL)getCertificateError:(NSString *)account;
++ (void)setCertificateError:(NSString *)account error:(BOOL)error;
 
 // ===== Varius =====
+
++ (BOOL)addSkipBackupAttributeToItemAtURL:(NSURL *)URL;
 
 + (NSString *)getUserAgent;
 
@@ -193,9 +205,11 @@
 + (void)moveFileAtPath:(NSString *)atPath toPath:(NSString *)toPath;
 + (void)copyFileAtPath:(NSString *)atPath toPath:(NSString *)toPath;
 + (void)removeFileAtPath:(NSString *)atPath;
-+ (void)removeAllFileID_UPLOAD_ActiveUser:(NSString *)activeUser activeUrl:(NSString *)activeUrl;
 
 + (NSString *)deletingLastPathComponentFromServerUrl:(NSString *)serverUrl;
++ (NSString *)firtsPathComponentFromServerUrl:(NSString *)serverUrl activeUrl:(NSString *)activeUrl;
++ (NSString *)getLastPathFromServerUrl:(NSString *)serverUrl activeUrl:(NSString *)activeUrl;
++ (NSString *)returnPathfromServerUrl:(NSString *)serverUrl activeUrl:(NSString *)activeUrl;
 + (NSString *)returnFileNamePathFromFileName:(NSString *)metadataFileName serverUrl:(NSString *)serverUrl activeUrl:(NSString *)activeUrl;
 
 + (NSArray *)createNameSubFolder:(PHFetchResult *)assets;
@@ -206,6 +220,10 @@
 
 + (NSString *)getMimeType:(NSString *)fileNameView;
 
++ (void)writeData:(NSData *)data fileNamePath:(NSString *)fileNamePath;
+
++ (void)selectFileNameFrom:(UITextField *)textField;
+
 // ===== E2E Encrypted =====
 
 + (NSString *)generateRandomIdentifier;
@@ -213,12 +231,15 @@
 
 // ===== CCMetadata =====
 
-+ (tableMetadata *)createMetadataWithAccount:(NSString *)account date:(NSDate *)date directory:(BOOL)directory fileID:(NSString *)fileID directoryID:(NSString *)directoryID fileName:(NSString *)fileName etag:(NSString *)etag size:(double)size status:(double)status;
++ (tableMetadata *)createMetadataWithAccount:(NSString *)account date:(NSDate *)date directory:(BOOL)directory fileID:(NSString *)fileID serverUrl:(NSString *)serverUrl fileName:(NSString *)fileName etag:(NSString *)etag size:(double)size status:(double)status url:(NSString *)url;
 
-+ (tableMetadata *)trasformedOCFileToCCMetadata:(OCFileDto *)itemDto fileName:(NSString *)fileName serverUrl:(NSString *)serverUrl directoryID:(NSString *)directoryID autoUploadFileName:(NSString *)autoUploadFileName autoUploadDirectory:(NSString *)autoUploadDirectory activeAccount:(NSString *)activeAccount isFolderEncrypted:(BOOL)isFolderEncrypted;
++ (tableMetadata *)trasformedOCFileToCCMetadata:(OCFileDto *)itemDto fileName:(NSString *)fileName serverUrl:(NSString *)serverUrl autoUploadFileName:(NSString *)autoUploadFileName autoUploadDirectory:(NSString *)autoUploadDirectory activeAccount:(NSString *)activeAccount isFolderEncrypted:(BOOL)isFolderEncrypted;
 
 + (tableMetadata *)insertFileSystemInMetadata:(tableMetadata *)metadata;
 + (NSString *)insertTypeFileIconName:(NSString *)fileNameView metadata:(tableMetadata *)metadata;
+
++ (NSString *)createDirectoyIDFromAccount:(NSString *)account serverUrl:(NSString *)serverUrl;
++ (NSString *)createMetadataIDFromAccount:(NSString *)account serverUrl:(NSString *)serverUrl fileNameView:(NSString *)fileNameView directory:(BOOL)directory;
 
 // ===== Third parts =====
 
@@ -230,5 +251,7 @@
 + (NSDate *)datetimeWithOutDate:(NSDate *)datDate;
 + (BOOL)isValidEmail:(NSString *)checkString;
 + (NSString *)URLEncodeStringFromString:(NSString *)string;
++ (NSString *)hexRepresentation:(NSData *)data spaces:(BOOL)spaces;
++ (NSString *)valueForKey:(NSString *)key fromQueryItems:(NSArray *)queryItems;
 
 @end

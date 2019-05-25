@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 26/01/16.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -21,9 +21,9 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
+#import <MBProgressHUD/MBProgressHUD.h>
+
 #import "OCCommunication.h"
-#import "AFURLSessionManager.h"
-#import "MBProgressHUD.h"
 #import "CCNetworking.h"
 #import "OCNetworking.h"
 #import "CCBKPasscode.h"
@@ -34,9 +34,7 @@
 #import "CCError.h"
 #import "CCHud.h"
 
-@interface ShareViewController : UIViewController <UITableViewDelegate, OCNetworkingDelegate, MBProgressHUDDelegate, BKPasscodeViewControllerDelegate, CCNetworkingDelegate, CCMoveDelegate>
-
-@property (nonatomic, strong) NSOperationQueue *networkingOperationQueue;
+@interface ShareViewController : UIViewController <UITableViewDelegate, MBProgressHUDDelegate, BKPasscodeViewControllerDelegate, CCMoveDelegate>
 
 @property (nonatomic, strong) NSString *activeAccount;
 @property (nonatomic, strong) NSString *activeUrl;

@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 16/01/17.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -22,12 +22,11 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <DZNEmptyDataSet/UIScrollView+EmptyDataSet.h>
 
 #import "CCDetail.h"
-#import "UIScrollView+EmptyDataSet.h"
 #import "TWMessageBarManager.h"
 #import "AHKActionSheet.h"
-#import "MGSwipeTableCell.h"
 #import "CCCellMain.h"
 #import "CCCellMainTransfer.h"
 #import "CCUtility.h"
@@ -36,20 +35,19 @@
 
 @class tableMetadata;
 
-@interface CCFavorites : UIViewController <UITableViewDataSource, UITableViewDelegate, UIDocumentInteractionControllerDelegate, UIActionSheetDelegate, DZNEmptyDataSetSource, DZNEmptyDataSetDelegate, MGSwipeTableCellDelegate>
+@interface CCFavorites : UIViewController <UITableViewDataSource, UITableViewDelegate, UIActionSheetDelegate, DZNEmptyDataSetSource, DZNEmptyDataSetDelegate, MGSwipeTableCellDelegate, UIViewControllerPreviewingDelegate>
 
 @property (nonatomic, weak) IBOutlet UITableView *tableView;
 
 @property (nonatomic, strong) tableMetadata *metadata;
+@property (nonatomic, strong) tableMetadata *metadataForPushDetail;
 @property (nonatomic, strong) NSString *serverUrl;
 @property (nonatomic, strong) NSString *titleViewControl;
 
 @property (nonatomic, weak) CCDetail *detailViewController;
 
-- (void)shouldPerformSegue;
-- (void)openIn:(tableMetadata *)metadata;
+- (void)shouldPerformSegue:(tableMetadata *)metadata;
 - (void)reloadDatasource:(NSString *)fileID action:(NSInteger)action;
 - (void)listingFavorites;
-- (void)addFavoriteFolder:(NSString *)serverUrl;
 
 @end

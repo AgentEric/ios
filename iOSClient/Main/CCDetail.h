@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 16/01/15.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 #import "CCGraphics.h"
 
 @class tableMetadata;
+@class NCViewerImagemeter;
 
 @interface CCDetail : UIViewController <MWPhotoBrowserDelegate, ReaderViewControllerDelegate>
 
@@ -56,6 +57,9 @@
 // PDF
 @property (nonatomic, strong) ReaderViewController *readerPDFViewController;
 @property (nonatomic, strong) NSString *passwordPDF;
+
+// IM
+@property (nonatomic, strong) NCViewerImagemeter *imagemeter;
 
 @property(nonatomic, weak) IBOutlet UIImageView *imageBackground;
 

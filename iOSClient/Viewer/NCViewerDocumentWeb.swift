@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 28/09/2018.
 //  Copyright © 2018 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -25,13 +25,13 @@ import Foundation
 
 class NCViewerDocumentWeb: NSObject {
     
+    let appDelegate = UIApplication.shared.delegate as! AppDelegate
+    var safeAreaBottom: Int = 0
+    
     @objc static let sharedInstance: NCViewerDocumentWeb = {
         let instance = NCViewerDocumentWeb()
         return instance
     }()
-    
-    let appDelegate = UIApplication.shared.delegate as! AppDelegate
-    var safeAreaBottom: Int = 0
     
     @objc func viewDocumentWebAt(_ metadata: tableMetadata, detail: CCDetail) {
         

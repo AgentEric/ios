@@ -5,7 +5,7 @@
 //  Created by Marino Faggiana on 10/08/16.
 //  Copyright (c) 2017 Marino Faggiana. All rights reserved.
 //
-//  Author Marino Faggiana <m.faggiana@twsweb.it>
+//  Author Marino Faggiana <marino.faggiana@nextcloud.com>
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@
 - (BOOL)acceptCertificate;
 - (void)saveCertificate:(SecTrustRef) trust withName:(NSString *) certName;
 
-- (void)presentViewControllerCertificateWithTitle:(NSString *)title viewController:(UIViewController *)viewController delegate:(id)delegate;
+- (void)presentViewControllerCertificateWithAccount:(NSString *)account viewController:(UIViewController *)viewController delegate:(id)delegate;
 
 @end
 
